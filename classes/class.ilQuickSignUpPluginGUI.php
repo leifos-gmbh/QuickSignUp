@@ -84,7 +84,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				ilLoggerFactory::getRootLogger()->debug("***** REGISTER!");
 			}
 		}
-		else {
+		else
+		{
+			ilLoggerFactory::getRootLogger()->debug("NO GET signup");
 			//button example
 			$login_btn = $f->button()->standard("Login", "");
 			$register_btn = $f->button()->standard("register", "");
@@ -93,15 +95,20 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$navigation = $r->render($login_btn);
 		$navigation .= $r->render($register_btn);
 
-		$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getLoginForm()));
+		if(!isset($_GET['signup'])) {
+			$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getLoginForm()));
+		} else {
+			$modal = $f->modal()->roundtrip($navigation, "First content");
+		}
 
 		$asyncUrl = $url . '&signup=login&replaceSignal=' . $modal->getReplaceContentSignal()->getId();
 
-		$modal->withAsyncRenderUrl($asyncUrl);
+		//$modal->withAsyncRenderUrl($asyncUrl);
+		$modal->withAsyncContentUrl($asyncUrl);
 
 		$button = $f->button()->standard("Login", "#")->withOnClick($modal->getShowSignal());
 
-		ilLoggerFactory::getRootLogger()->debug("***modal getShowSignal ID => ".$modal->getShowSignal()->getId());
+		ilLoggerFactory::getRootLogger()->debug("***modal ASYNC URL => ".$asyncUrl);
 
 		$comps = [$button, $modal];
 
