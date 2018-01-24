@@ -7,7 +7,7 @@ include_once("./Services/COPage/classes/class.ilPageComponentPlugin.php");
  * @author Jesús López Reyes <lopez@leifos.com>
  * @version $Id$
  */
-class ilQuickSignUp extends ilPageComponentPlugin
+class ilQuickSignUpPlugin extends ilPageComponentPlugin
 {
 	private static $instance = null;
 
@@ -39,13 +39,13 @@ class ilQuickSignUp extends ilPageComponentPlugin
 	}
 
 	/**
-	 * Get singelton instance
+	 * Get singleton instance
 	 * @global ilPluginAdmin $ilPluginAdmin
 	 * @return ilQuickSignUp
 	 */
 	public static function getInstance()
 	{
-		//global $ilPluginAdmin;
+		global $ilPluginAdmin;
 
 		if(self::$instance)
 		{
