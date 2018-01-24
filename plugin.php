@@ -15,7 +15,3 @@ $ilias_max_version = "5.4.999";
 $responsible = "Jesus Lopez Reyes";
 $responsible_mail = "lopez@leifos.com";
 ?>
-
-
-
-
