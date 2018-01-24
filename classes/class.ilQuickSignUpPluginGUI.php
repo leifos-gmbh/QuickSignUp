@@ -66,6 +66,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		{
 			$signalId = $_GET['replaceSignal'];
 
+			$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($signalId);
+
+			//Working here.
+			$login_btn = $f->button()->standard('Login', '#')
+				->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&signup=login&replaceSignal=' . $signalId));
+
+			$register_btn = $f->button()->standard("register", "#")
+				->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&signup=register&replaceSignal=' . $signalId));
+
 			ilLoggerFactory::getRootLogger()->debug("* ISSET--> ".$_GET['signup']);
 			if($_GET['signup'] == "login")
 			{
@@ -76,18 +85,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			}
 		}
 		else {
-			ilLoggerFactory::getRootLogger()->debug(":( ** NO GET ?????????? ");
+			//button example
+			$login_btn = $f->button()->standard("Login", "");
+			$register_btn = $f->button()->standard("register", "");
 		}
-
-		//button example
-		$login_btn = $f->button()->standard("Login", "");
-		$register_btn = $f->button()->standard("register", "");
 
 		$navigation = $r->render($login_btn);
 		$navigation .= $r->render($register_btn);
 
 		$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getLoginForm()));
-		//$modal = $f->modal()->roundtrip('', [])->withAsyncRenderUrl($url_str);
 
 		$asyncUrl = $url . '&signup=login&replaceSignal=' . $modal->getReplaceContentSignal()->getId();
 
@@ -104,29 +110,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$tpl->setVariable("CONTENT", $content);
 
 		return $tpl->get();
-	}
-
-
-	function getForm()
-	{
-		if(isset($_GET['signup']))
-		{
-			$signalId = $_GET['replaceSignal'];
-
-			ilLoggerFactory::getRootLogger()->debug("***** ISSET--> ".$_GET['signup']);
-			if($_GET['signup'] == "login")
-			{
-				ilLoggerFactory::getRootLogger()->debug("***** LOGIN!");
-			} else {
-				ilLoggerFactory::getRootLogger()->debug("***** REGISTER!");
-			}
-		}
-		else {
-			ilLoggerFactory::getRootLogger()->debug("***** NO GET");
-		}
-
-		ilLoggerFactory::getRootLogger()->debug("PRINTING FORM!");
-		return "printing form";
 	}
 
 	function getLoginForm()

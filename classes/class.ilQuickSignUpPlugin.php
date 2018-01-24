@@ -12,7 +12,7 @@ class ilQuickSignUpPlugin extends ilPageComponentPlugin
 	private static $instance = null;
 
 	const PNAME = 'QuickSignUp';
-	const SLOT_ID= 'pgcp';
+	const SLOT_ID = 'pgcp';
 	const CNAME = 'COPage';
 	const CTYPE = 'Services';
 
