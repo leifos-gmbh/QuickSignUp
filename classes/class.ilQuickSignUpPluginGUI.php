@@ -96,15 +96,27 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$navigation .= $r->render($register_btn);
 
 		if(!isset($_GET['signup'])) {
+			ilLoggerFactory::getRootLogger()->debug("no signup");
 			$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getLoginForm()));
 		} else {
-			$modal = $f->modal()->roundtrip($navigation, "First content");
+
+			ilLoggerFactory::getRootLogger()->debug("else");
+
+			$signalId = $_GET['replaceSignal'];
+
+			$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($signalId);
+
+			$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getRegisterForm()));
+
+			echo $r->render($modal);
+			exit;
 		}
 
 		$asyncUrl = $url . '&signup=login&replaceSignal=' . $modal->getReplaceContentSignal()->getId();
 
 		//$modal->withAsyncRenderUrl($asyncUrl);
-		$modal->withAsyncContentUrl($asyncUrl);
+		//$modal = $modal->withAsyncContentUrl($asyncUrl);
+		$modal = $modal->withAsyncRenderUrl($asyncUrl);
 
 		//We can get the first value of the form to get the label doing something like this:
 		$button = $f->button()->standard($a_properties['value_1'], "#")->withOnClick($modal->getShowSignal());
