@@ -16,7 +16,8 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
 class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 {
 
-	protected $form_displayed = "login";
+	const MD_LOGIN_VIEW = 1;
+	const MD_REGISTER_VIEW = 2;
 
 	function executeCommand()
 	{
@@ -52,6 +53,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$ctrl = $DIC->ctrl();
 		$user = $DIC->user();
 		$url = $_SERVER['REQUEST_URI'];
+		$navigation = "";
 
 		//validation TODO when finish: uncomment this validation and add more if needed. We want to show this button only for non logged users.
 		//if($user->id) {
@@ -62,67 +64,50 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$pl = $this->getPlugin();
 		$tpl = $pl->getTemplate("tpl.content.html");
 
-		if(isset($_GET['signup']))
+		if(isset($_GET['signup']) && isset($_GET['replaceSignal']))
 		{
+			$signup = $_GET['signup'];
 			$signalId = $_GET['replaceSignal'];
 
 			$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($signalId);
 
-			//Working here.
 			$login_btn = $f->button()->standard('Login', '#')
-				->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&signup=login&replaceSignal=' . $signalId));
+				->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&signup='.self::MD_LOGIN_VIEW.'&replaceSignal=' . $signalId));
 
 			$register_btn = $f->button()->standard("register", "#")
-				->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&signup=register&replaceSignal=' . $signalId));
+				->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&signup='.self::MD_REGISTER_VIEW.'&replaceSignal=' . $signalId));
 
-			ilLoggerFactory::getRootLogger()->debug("* ISSET--> ".$_GET['signup']);
-			if($_GET['signup'] == "login")
-			{
-				ilLoggerFactory::getRootLogger()->debug("***** LOGIN!");
+			ilLoggerFactory::getRootLogger()->debug("* ISSET get signup true --> ".$_GET['signup']);
+			ilLoggerFactory::getRootLogger()->debug("* Signal id  --> ".$signalId);
 
+			$navigation = $r->render($login_btn);
+			$navigation .= $r->render($register_btn);
+
+			if($signup == self::MD_LOGIN_VIEW) {
+				$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getLoginForm()));
+				//$content = $f->legacy($this->getLoginForm());
 			} else {
-				ilLoggerFactory::getRootLogger()->debug("***** REGISTER!");
+				$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getRegisterForm()));
+				//$content = $f->legacy($this->getRegisterForm());
 			}
-		}
-		else
-		{
-			ilLoggerFactory::getRootLogger()->debug("NO GET signup");
-			//button example
-			$login_btn = $f->button()->standard("Login", "");
-			$register_btn = $f->button()->standard("register", "");
-		}
-
-		$navigation = $r->render($login_btn);
-		$navigation .= $r->render($register_btn);
-
-		if(!isset($_GET['signup'])) {
-			ilLoggerFactory::getRootLogger()->debug("no signup");
-			$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getLoginForm()));
-		} else {
-
-			ilLoggerFactory::getRootLogger()->debug("else");
-
-			$signalId = $_GET['replaceSignal'];
-
-			$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($signalId);
-
-			$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getRegisterForm()));
-
 			echo $r->render($modal);
+			//echo $r->render($content);
 			exit;
 		}
 
-		$asyncUrl = $url . '&signup=login&replaceSignal=' . $modal->getReplaceContentSignal()->getId();
+		$modal = $f->modal()->roundtrip($navigation,$f->legacy($this->getLoginForm()));
 
-		//$modal->withAsyncRenderUrl($asyncUrl);
-		//$modal = $modal->withAsyncContentUrl($asyncUrl);
+		$asyncUrl = $url . '&signup='.self::MD_LOGIN_VIEW.'&replaceSignal=' . $modal->getReplaceContentSignal()->getId();
+
+		ilLoggerFactory::getRootLogger()->debug("*** First View modal has this ASYNC URL => ".$asyncUrl);
+
 		$modal = $modal->withAsyncRenderUrl($asyncUrl);
+		//$modal = $modal->withAsyncContentUrl($asyncUrl);
 
 		//We can get the first value of the form to get the label doing something like this:
 		$button = $f->button()->standard($a_properties['value_1'], "#")->withOnClick($modal->getShowSignal());
 		//$button = $f->button()->standard($a_properties['value_1'], "#")->withOnClick($modal->getShowSignal());
 
-		ilLoggerFactory::getRootLogger()->debug("***modal ASYNC URL => ".$asyncUrl);
 
 		$comps = [$button, $modal];
 
