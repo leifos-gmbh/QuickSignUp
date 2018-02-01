@@ -19,6 +19,12 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	const MD_LOGIN_VIEW = 1;
 	const MD_REGISTER_VIEW = 2;
 
+	var $login_success = false;
+	var $login_message = "";
+
+	var $register_success = false;
+	var $register_message = "";
+
 	function executeCommand()
 	{
 		global $ilCtrl;
@@ -46,6 +52,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function getElementHTML($a_mode, array $a_properties, $a_plugin_version)
 	{
+
 		//globals
 		global $DIC;
 		$f = $DIC->ui()->factory();
@@ -64,10 +71,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$tpl = $pl->getTemplate("tpl.content.html");
 
 
-
 		$page = $_GET["page"];
+
+
+		//FIRST LOAD
 		if ($page == "")
 		{
+
 			$modal = $f->modal()->roundtrip("Modal Title", $f->legacy("b"));
 			$asyncUrl = $url . '&page=login&replaceSignal=' . $modal->getReplaceContentSignal()->getId();
 			$modal = $modal->withAsyncRenderUrl($asyncUrl);
@@ -77,18 +87,47 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			return $content;
 
 		}
+		//WITH ASYNC
 		else
 		{
 			$signalId = $_GET['replaceSignal'];
+
+			include_once './Services/Authentication/classes/class.ilAuthStatus.php';
+			$status = ilAuthStatus::getInstance();
+
 			$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($signalId);
-			$button1 = $f->button()->standard('Login', '#')
-				->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&page=login&replaceSignal=' . $replaceSignal->getId()));
-			$button2 = $f->button()->standard('Registration', '#')
-				->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&page=register&replaceSignal=' . $replaceSignal->getId()));
+
+			//Only show the buttons if ILIAS allows to create new registrations
+			if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED) {
+				$button1 = $f->button()->standard('Login', '#')
+					->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&page=login&replaceSignal=' . $replaceSignal->getId()));
+				$button2 = $f->button()->standard('Registration', '#')
+					->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&page=register&replaceSignal=' . $replaceSignal->getId()));
+			} else {
+				$button1 =  $button2 = $f->legacy("");
+			}
 
 			if ($page == "login")
 			{
-				$legacy = $f->legacy("<p>The Login Page</p>");
+				switch($status->getStatus())
+				{
+					case ilAuthStatus::STATUS_AUTHENTICATED:
+						$legacy_content = $this->login_message;
+
+					case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
+						$this->login_message = $status->getTranslatedReason();
+						//todo remove inline css and use the ilias sendFailure css
+						$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
+						$legacy_content = "<div style='".$css."'>".$this->login_message."</div>".$this->getLoginForm()->getHTML();
+				}
+				if($legacy_content == "")
+				{
+					$legacy_content = $this->getLoginForm()->getHTML();
+				}
+
+				//$legacy_content .= $this->getPasswordAssistance;
+				$legacy = $f->legacy($legacy_content);
+
 				$modal = $f->modal()->roundtrip("Login", [$button1, $button2, $legacy]);
 			}
 			if ($page == "register")
@@ -105,7 +144,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	function getLoginForm()
 	{
-		return "login Form";
+
+		global $tpl, $lng, $ilCtrl;
+
+		$form = $this->initFormLogin();
+		//$form->setValuesByPost();
+		ilLoggerFactory::getRootLogger()->debug("html form => ".$form->getHTML());
+		return $form;
 	}
 
 	function getRegisterForm()
@@ -292,6 +337,148 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		ilUtil::sendInfo($this->getPlugin()->txt("more_editing"));
 	}
+
+
+	/**
+	 * @return ilPropertyFormGUI
+	 */
+	function initFormLogin()
+	{
+		//global $lng, $ilCtrl;
+		global $DIC;
+
+		$lng = $DIC->language();
+		$ctrl = $DIC->ctrl();
+
+		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
+		$form = new ilPropertyFormGUI();
+
+		//$form->setFormAction($ctrl->getFormAction($this));
+		$form->setName("formlogin");
+		$form->setShowTopButtons(false);
+
+		$ti = new ilTextInputGUI($lng->txt("username"), "username");
+		$ti->setSize(20);
+		$ti->setRequired(true);
+		$form->addItem($ti);
+
+		$pi = new ilPasswordInputGUI($lng->txt("password"), "password");
+		$pi->setUseStripSlashes(false);
+		$pi->setRetype(false);
+		$pi->setSkipSyntaxCheck(true);
+		$pi->setSize(20);
+		$pi->setDisableHtmlAutoComplete(false);
+		$pi->setRequired(true);
+		$form->addItem($pi);
+
+		//async
+		$form->addCommandButton("standardAuthentication", $lng->txt("log_in"));
+
+		return $form;
+	}
+
+	protected function standardAuthentication()
+	{
+		global $DIC;
+		$auth_session = $DIC['ilAuthSession'];
+		$form = $this->initFormLogin();
+		if($form->checkInput())
+		{
+			include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendCredentials.php';
+			$credentials = new ilAuthFrontendCredentials();
+			$credentials->setUsername($form->getInput('username'));
+			$credentials->setPassword($form->getInput('password'));
+
+			include_once './Services/Authentication/classes/Provider/class.ilAuthProviderFactory.php';
+			$provider_factory = new ilAuthProviderFactory();
+			$providers = $provider_factory->getProviders($credentials);
+
+			//todo we can delete this status
+			include_once './Services/Authentication/classes/class.ilAuthStatus.php';
+			$status = ilAuthStatus::getInstance();
+
+			include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendFactory.php';
+			$frontend_factory = new ilAuthFrontendFactory();
+			$frontend_factory->setContext(ilAuthFrontendFactory::CONTEXT_STANDARD_FORM);
+			$frontend = $frontend_factory->getFrontend(
+				$auth_session,
+				$status,
+				$credentials,
+				$providers
+			);
+
+			$frontend->authenticate();
+
+			//todo: we could put this messages and returns directly when check the auth status in gethtml
+			switch($status->getStatus())
+			{
+				case ilAuthStatus::STATUS_AUTHENTICATED:
+					return $this->login_success = true;
+
+				/**
+				 *
+				 * TODO:
+				 *
+				 * Activation code status
+				 *
+				 * Migration required status
+				 *
+				 */
+
+				case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
+					$this->login_message = $status->getTranslatedReason();
+					return $this->login_success = false;
+			}
+		}
+
+		$this->login_success = $this->lng->txt('err_wrong_login');
+		return $this->login_success = false;
+	}
+
+	/**
+	 * TODO remove this: If we have the tabs we don't need this method nor getAlreadyUsingIlias
+	 * @return string with link to the register
+	 */
+	public function getNewToIlias()
+	{
+		global $DIC;
+		$lng = $DIC->language();
+		$ctrl = $DIC->ctrl();
+
+		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
+		{
+			return $lng->txt("registration").$ctrl->getLinkTargetByClass("ilaccountregistrationgui", "");
+		}
+	}
+
+	public function getAlreadyUsingIlias()
+	{
+		//TODO nothing.
+	}
+
+	//TODO. tpl
+	//TODO ??? exec command + * @ilCtrl_Calls ilQuickSignUpPluginGUI: ilPasswordAssistanceGUI
+	public function getPasswordAssistance()
+	{
+		global $DIC;
+
+		$il_setting = $DIC->settings();
+		$lng = $DIC->language();
+		$ctrl = $DIC->ctrl();
+		// allow password assistance? Surpress option if Authmode is not local database
+		if ($il_setting->get("password_assistance"))
+		{
+			$msg_password = $lng->txt("forgot_password")." ".$ctrl->getLinkTargetByClass("ilpasswordassistancegui", "");
+			$msg_username = $lng->txt("forgot_username")." ".$ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm");
+
+			return $msg_password."<br>".$msg_username;
+		}
+
+		return "";
+
+	}
+
+
 
 }
 ?>
