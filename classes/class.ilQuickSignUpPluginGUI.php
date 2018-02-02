@@ -31,12 +31,12 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$next_class = $ilCtrl->getNextClass();
 
-		switch($next_class)
+		switch ($next_class)
 		{
 			default:
 				// perform valid commands
 				$cmd = $ilCtrl->getCmd();
-				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel")))
+				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register")))
 				{
 					$this->$cmd();
 				}
@@ -52,94 +52,122 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function getElementHTML($a_mode, array $a_properties, $a_plugin_version)
 	{
-
 		//globals
 		global $DIC;
 		$f = $DIC->ui()->factory();
 		$r = $DIC->ui()->renderer();
 		$ctrl = $DIC->ctrl();
-		$user = $DIC->user();
-		$url = $_SERVER['REQUEST_URI'];
 
-		//validation TODO when finish: uncomment this validation and add more if needed. We want to show this button only for non logged users.
-		//if($user->id) {
-		//	return "";
-		//}
-
-		//template
 		$pl = $this->getPlugin();
-		$tpl = $pl->getTemplate("tpl.content.html");
 
+		$modal = $f->modal()->roundtrip("Modal Title", $f->legacy(""));
+		$ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
 
-		$page = $_GET["page"];
+		$login_url = $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
+			"", true);
+		$modal = $modal->withAsyncRenderUrl($login_url);
+		$button = $f->button()->standard("Sign In", '#')
+			->withOnClick($modal->getShowSignal());
+		$content = $r->render([$modal, $button]);
 
+		return $content;
+	}
 
-		//FIRST LOAD
-		if ($page == "")
+	/**
+	 * Show navigation
+	 *
+	 * @param
+	 * @return
+	 */
+	function getNavigation()
+	{
+		//globals
+		global $DIC;
+		$f = $DIC->ui()->factory();
+		$ctrl = $DIC->ctrl();
+
+		$pl = $this->getPlugin();
+
+		$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($_GET["replaceSignal"]);
+
+		$login_url = $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
+			"", true);
+		$register_url = $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "register",
+			"", true);
+
+		//Only show the buttons if ILIAS allows to create new registrations
+		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
 		{
-
-			$modal = $f->modal()->roundtrip("Modal Title", $f->legacy("b"));
-			$asyncUrl = $url . '&page=login&replaceSignal=' . $modal->getReplaceContentSignal()->getId();
-			$modal = $modal->withAsyncRenderUrl($asyncUrl);
-			$button = $f->button()->standard("Sign In", '#')
-				->withOnClick($modal->getShowSignal());
-			$content = $r->render([$modal, $button]);
-			return $content;
-
+			$button1 = $f->button()->standard('Login', '#')
+				->withOnClick($replaceSignal->withAsyncRenderUrl($login_url));
+			$button2 = $f->button()->standard('Registration', '#')
+				->withOnClick($replaceSignal->withAsyncRenderUrl($register_url));
+			return array($button1, $button2);
 		}
-		//WITH ASYNC
-		else
+
+		return array($f->legacy(""));
+	}
+
+
+	/**
+	 * Get login screen
+	 */
+	function login()
+	{
+		//globals
+		global $DIC;
+		$f = $DIC->ui()->factory();
+		$r = $DIC->ui()->renderer();
+		$ctrl = $DIC->ctrl();
+		$ctrl->saveParameter($this, "replaceSignal");
+
+		include_once './Services/Authentication/classes/class.ilAuthStatus.php';
+		$status = ilAuthStatus::getInstance();
+
+		switch ($status->getStatus())
 		{
-			$signalId = $_GET['replaceSignal'];
+			case ilAuthStatus::STATUS_AUTHENTICATED:
+				$legacy_content = $this->login_message;
+				break;
 
-			include_once './Services/Authentication/classes/class.ilAuthStatus.php';
-			$status = ilAuthStatus::getInstance();
-
-			$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($signalId);
-
-			//Only show the buttons if ILIAS allows to create new registrations
-			if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED) {
-				$button1 = $f->button()->standard('Login', '#')
-					->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&page=login&replaceSignal=' . $replaceSignal->getId()));
-				$button2 = $f->button()->standard('Registration', '#')
-					->withOnClick($replaceSignal->withAsyncRenderUrl($url . '&page=register&replaceSignal=' . $replaceSignal->getId()));
-			} else {
-				$button1 =  $button2 = $f->legacy("");
-			}
-
-			if ($page == "login")
-			{
-				switch($status->getStatus())
-				{
-					case ilAuthStatus::STATUS_AUTHENTICATED:
-						$legacy_content = $this->login_message;
-
-					case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-						$this->login_message = $status->getTranslatedReason();
-						//todo remove inline css and use the ilias sendFailure css
-						$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
-						$legacy_content = "<div style='".$css."'>".$this->login_message."</div>".$this->getLoginForm()->getHTML();
-				}
-				if($legacy_content == "")
-				{
-					$legacy_content = $this->getLoginForm()->getHTML();
-				}
-
-				//$legacy_content .= $this->getPasswordAssistance;
-				$legacy = $f->legacy($legacy_content);
-
-				$modal = $f->modal()->roundtrip("Login", [$button1, $button2, $legacy]);
-			}
-			if ($page == "register")
-			{
-				$legacy = $f->legacy("<p>The Registration Page</p>");
-				$modal = $f->modal()->roundtrip("Registration", [$button1, $button2, $legacy]);
-			}
-
-			//$modal = $modal->withContent([$button1, $button2]);
-			echo $r->renderAsync([$modal]);
-			exit;
+			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
+				$this->login_message = $status->getTranslatedReason();
+				//todo remove inline css and use the ilias sendFailure css
+				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
+				$legacy_content = "<div style='" . $css . "'>" . $this->login_message . "</div>" . $this->getLoginForm()->getHTML();
+				break;
 		}
+		if ($legacy_content == "")
+		{
+			$legacy_content = $this->getLoginForm()->getHTML();
+		}
+
+		//$legacy_content .= $this->getPasswordAssistance;
+		$legacy = $f->legacy($legacy_content);
+
+		$modal = $f->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)));
+		echo $r->renderAsync([$modal]);
+		exit;
+	}
+
+	/**
+	 * Get login screen
+	 */
+	function register()
+	{
+		//globals
+		global $DIC;
+		$f = $DIC->ui()->factory();
+		$r = $DIC->ui()->renderer();
+		$ctrl = $DIC->ctrl();
+		$ctrl->saveParameter($this, "replaceSignal");
+
+		$legacy = $f->legacy("<p>The Registration Page</p>");
+		$modal = $f->modal()->roundtrip("Registration", array_merge($this->getNavigation(), array($legacy)));
+
+		//$modal = $modal->withContent([$button1, $button2]);
+		echo $r->renderAsync([$modal]);
+		exit;
 	}
 
 	function getLoginForm()
@@ -156,6 +184,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	function getRegisterForm()
 	{
 		return "Register";
+	}
+
+	function test()
+	{
+		die("Voila");
 	}
 
 	/**
