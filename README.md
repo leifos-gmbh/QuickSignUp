@@ -14,6 +14,6 @@ No special configuration for users who have a registration code.
 		(Radiobutton) Registration with Codes
 			This type allows self-registration of users but requires a valid code.`
 			
-			ilAuthStatus::STATUS_CODE_ACTIVATION_REQUIRED:
+    ilAuthStatus::STATUS_CODE_ACTIVATION_REQUIRED:
 			
 Captcha configuration is not used.

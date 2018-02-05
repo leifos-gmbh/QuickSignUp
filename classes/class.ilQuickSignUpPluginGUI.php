@@ -8,6 +8,10 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * DEV NOTES
  * 1. There is no description of which button type should be used. I'm using the standard without customization.
  * 2. viewcontrol "mode" was my first thinking.
+ * 3. Round-Trip rules:
+ *       Round-Trip modals MUST contain at least two buttons at the bottom of the modals: a button
+ *       to cancel (right) the workflow and a button to finish or reach the next step in the workflow (left).
+ *     2: >
  *
  * @author Jesús López <lopez@leifos.com>
  * @version $Id$
@@ -54,18 +58,21 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	{
 		//globals
 		global $DIC;
+		$user = $DIC->user();
+
+		//If the user is not anonymous exit.
+		if(!$user->isAnonymous()) {
+			return "";
+		}
+
 		$f = $DIC->ui()->factory();
 		$r = $DIC->ui()->renderer();
 		$ctrl = $DIC->ctrl();
 
-		$pl = $this->getPlugin();
-
 		$modal = $f->modal()->roundtrip("Modal Title", $f->legacy(""));
 		$ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
 
-		$login_url = $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
-			"", true);
-		$modal = $modal->withAsyncRenderUrl($login_url);
+		$modal = $modal->withAsyncRenderUrl($this->getLoginUrl());
 		$button = $f->button()->standard("Sign In", '#')
 			->withOnClick($modal->getShowSignal());
 		$content = $r->render([$modal, $button]);
@@ -86,14 +93,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$f = $DIC->ui()->factory();
 		$ctrl = $DIC->ctrl();
 
-		$pl = $this->getPlugin();
-
 		$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($_GET["replaceSignal"]);
 
-		$login_url = $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
-			"", true);
-		$register_url = $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "register",
-			"", true);
+		$login_url = $this->getLoginUrl();
+		$register_url = $this->getRegisterUrl();
 
 		//Only show the buttons if ILIAS allows to create new registrations
 		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
@@ -114,7 +117,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function login()
 	{
-		//globals
 		global $DIC;
 		$f = $DIC->ui()->factory();
 		$r = $DIC->ui()->renderer();
@@ -135,11 +137,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				//todo remove inline css and use the ilias sendFailure css
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
 				$legacy_content = "<div style='" . $css . "'>" . $this->login_message . "</div>" . $this->getLoginForm()->getHTML();
+
+				$legacy_content .= $this->appendJS($this->getLoginUrl());
 				break;
 		}
 		if ($legacy_content == "")
 		{
 			$legacy_content = $this->getLoginForm()->getHTML();
+			$legacy_content .= $this->appendJS($this->getLoginValidationUrl());
 		}
 
 		//$legacy_content .= $this->getPasswordAssistance;
@@ -148,6 +153,29 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$modal = $f->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)));
 		echo $r->renderAsync([$modal]);
 		exit;
+	}
+
+	//todo:finish, move it and use lng vars
+	public function appendJS($a_url)
+	{
+		$js = "<script>
+				$('#form_login_modal_plugin').on('submit', function(e) {
+				    var post_url = '".$a_url."';
+				    alert('url = '+ post_url);
+					e.preventDefault();
+					$.ajax({
+						type: 'POST',
+						url: post_url,
+						data: $(this).serializeArray(),
+						success: function(result) { //we got the response
+							 $('.modal-body').html('Successfully called');
+						 }
+						//error:
+					});
+				});
+			</script>";
+
+		return $js;
 	}
 
 	/**
@@ -170,14 +198,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		exit;
 	}
 
+	//todo: if nothing special to do delete this method and use only initFormLogin.
 	function getLoginForm()
 	{
-
-		global $tpl, $lng, $ilCtrl;
-
 		$form = $this->initFormLogin();
-		//$form->setValuesByPost();
-		ilLoggerFactory::getRootLogger()->debug("html form => ".$form->getHTML());
+
 		return $form;
 	}
 
@@ -377,7 +402,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function initFormLogin()
 	{
-		//global $lng, $ilCtrl;
 		global $DIC;
 
 		$lng = $DIC->language();
@@ -386,8 +410,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
 
-		//$form->setFormAction($ctrl->getFormAction($this));
+		$form->setFormAction($ctrl->getFormAction($this));
 		$form->setName("formlogin");
+		$form->setId("login_modal_plugin");
 		$form->setShowTopButtons(false);
 
 		$ti = new ilTextInputGUI($lng->txt("username"), "username");
@@ -410,7 +435,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return $form;
 	}
 
-	protected function standardAuthentication()
+	function standardAuthentication()
 	{
 		global $DIC;
 		$auth_session = $DIC['ilAuthSession'];
@@ -511,7 +536,34 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	}
 
+	protected function getLoginUrl()
+	{
+		global $DIC;
+		$ctrl = $DIC->ctrl();
+		$pl = $this->getPlugin();
 
+		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
+			"", true);
+	}
 
+	protected function getLoginValidationUrl()
+	{
+		global $DIC;
+		$ctrl = $DIC->ctrl();
+		$pl = $this->getPlugin();
+
+		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "standardAuthentication",
+			"", true);
+	}
+
+	protected function getRegisterUrl()
+	{
+		global $DIC;
+		$ctrl = $DIC->ctrl();
+		$pl = $this->getPlugin();
+
+		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "register",
+			"", true);
+	}
 }
 ?>
