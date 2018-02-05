@@ -16,6 +16,8 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * @author Jesús López <lopez@leifos.com>
  * @version $Id$
  * @ilCtrl_isCalledBy ilQuickSignUpPluginGUI: ilPCPluggedGUI
+ * @ilCtrl_Calls ilQuickSignUpPluginGUI: ilPasswordAssistanceGUI
+
  */
 class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 {
@@ -29,17 +31,24 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	var $register_success = false;
 	var $register_message = "";
 
+	var $tab_option = self::MD_LOGIN_VIEW;
+
 	function executeCommand()
 	{
-		global $ilCtrl;
+		global $DIC;
+		$ctrl = $DIC->ctrl();
 
-		$next_class = $ilCtrl->getNextClass();
+		$next_class = $ctrl->getNextClass();
 
 		switch ($next_class)
 		{
+			case "ilpasswordassistancegui":
+				require_once("Services/Init/classes/class.ilPasswordAssistanceGUI.php");
+				return $ctrl->forwardCommand(new ilPasswordAssistanceGUI());
+
 			default:
 				// perform valid commands
-				$cmd = $ilCtrl->getCmd();
+				$cmd = $ctrl->getCmd();
 				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register")))
 				{
 					$this->$cmd();
@@ -101,10 +110,16 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//Only show the buttons if ILIAS allows to create new registrations
 		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
 		{
-			$button1 = $f->button()->standard('Login', '#')
-				->withOnClick($replaceSignal->withAsyncRenderUrl($login_url));
-			$button2 = $f->button()->standard('Registration', '#')
-				->withOnClick($replaceSignal->withAsyncRenderUrl($register_url));
+			if($this->tab_option == self::MD_LOGIN_VIEW) {
+				$button1 = $f->button()->standard('Login', '#')->withUnavailableAction();
+				$button2 = $f->button()->standard('Registration', '#')
+					->withOnClick($replaceSignal->withAsyncRenderUrl($register_url));
+			} else {
+				$button1 = $f->button()->standard('Login', '#')
+					->withOnClick($replaceSignal->withAsyncRenderUrl($login_url));
+				$button2 = $f->button()->standard('Registration', '#')->withUnavailableAction();
+			}
+
 			return array($button1, $button2);
 		}
 
@@ -123,6 +138,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$ctrl = $DIC->ctrl();
 		$ctrl->saveParameter($this, "replaceSignal");
 
+		$this->setTabOption(self::MD_LOGIN_VIEW);
+
 		include_once './Services/Authentication/classes/class.ilAuthStatus.php';
 		$status = ilAuthStatus::getInstance();
 
@@ -137,14 +154,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				//todo remove inline css and use the ilias sendFailure css
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
 				$legacy_content = "<div style='" . $css . "'>" . $this->login_message . "</div>" . $this->getLoginForm()->getHTML();
-
-				$legacy_content .= $this->appendJS($this->getLoginUrl());
+				$legacy_content .= $this->getPasswordAssistance();
+				$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
 				break;
 		}
 		if ($legacy_content == "")
 		{
 			$legacy_content = $this->getLoginForm()->getHTML();
-			$legacy_content .= $this->appendJS($this->getLoginValidationUrl());
+			$legacy_content .= $this->getPasswordAssistance();
+			$legacy_content .= $this->appendLoginJS($this->getLoginValidationUrl());
 		}
 
 		//$legacy_content .= $this->getPasswordAssistance;
@@ -153,29 +171,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$modal = $f->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)));
 		echo $r->renderAsync([$modal]);
 		exit;
-	}
-
-	//todo:finish, move it and use lng vars
-	public function appendJS($a_url)
-	{
-		$js = "<script>
-			$('#form_login_modal_plugin').on('submit', function(e) {
-				var post_url = '".$a_url."';
-				alert('url = '+ post_url);
-				e.preventDefault();
-				$.ajax({
-					type: 'POST',
-					url: post_url,
-					data: $(this).serializeArray(),
-					success: function(result) { //we got the response
-						 $('.modal-body').html('Successfully called');
-					 }
-					//error:
-				});
-			});
-		</script>";
-
-		return $js;
 	}
 
 	/**
@@ -189,6 +184,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$r = $DIC->ui()->renderer();
 		$ctrl = $DIC->ctrl();
 		$ctrl->saveParameter($this, "replaceSignal");
+
+		$this->setTabOption(self::MD_REGISTER_VIEW);
 
 		$legacy = $f->legacy("<p>The Registration Page</p>");
 		$modal = $f->modal()->roundtrip("Registration", array_merge($this->getNavigation(), array($legacy)));
@@ -437,6 +434,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	function standardAuthentication()
 	{
+
+		ilLoggerFactory::getRootLogger()->debug("//Standard Authentication! ");
+
 		global $DIC;
 		$auth_session = $DIC['ilAuthSession'];
 		$form = $this->initFormLogin();
@@ -514,8 +514,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//TODO nothing.
 	}
 
-	//TODO. tpl
-	//TODO ??? exec command + * @ilCtrl_Calls ilQuickSignUpPluginGUI: ilPasswordAssistanceGUI
+	//TODO fix the ctrl call
 	public function getPasswordAssistance()
 	{
 		global $DIC;
@@ -523,17 +522,18 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$il_setting = $DIC->settings();
 		$lng = $DIC->language();
 		$ctrl = $DIC->ctrl();
+		$f = $DIC->ui()->factory();
+		$r = $DIC->ui()->renderer();
+
 		// allow password assistance? Surpress option if Authmode is not local database
 		if ($il_setting->get("password_assistance"))
 		{
-			$msg_password = $lng->txt("forgot_password")." ".$ctrl->getLinkTargetByClass("ilpasswordassistancegui", "");
-			$msg_username = $lng->txt("forgot_username")." ".$ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm");
-
-			return $msg_password."<br>".$msg_username;
+			$link_pass = $f->link()->standard($lng->txt("forgot_password"),$ctrl->getLinkTargetByClass("ilpasswordassistancegui", ""));
+			$link_name = $f->link()->standard($lng->txt("forgot_username"),$ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm"));
+			return $r->render($link_pass)." ".$r->render($link_name);
 		}
 
 		return "";
-
 	}
 
 	protected function getLoginUrl()
@@ -541,7 +541,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		global $DIC;
 		$ctrl = $DIC->ctrl();
 		$pl = $this->getPlugin();
-
+		
 		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
 			"", true);
 	}
@@ -564,6 +564,38 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "register",
 			"", true);
+	}
+
+	public function appendLoginJS($a_url)
+	{
+		$js = "<script>
+			$('#form_login_modal_plugin').on('submit', function(e) {
+				var post_url = '".$a_url."';
+				alert('url = '+ post_url);
+				e.preventDefault();
+				$.ajax({
+					type: 'POST',
+					url: post_url,
+					data: $(this).serializeArray(),
+					success: function(result) { //we got the response
+						if(result == 'ok')
+					    {
+					        $('.modal-body').html('validation - result = '+result);
+					    } else {
+						    $('.modal-body').html('JS ok But no validation result= '+result);
+					    }
+					 }
+					//error:
+				});
+			});
+		</script>";
+
+		return $js;
+	}
+
+	public function setTabOption($a_view)
+	{
+		$this->tab_option = $a_view;
 	}
 }
 ?>
