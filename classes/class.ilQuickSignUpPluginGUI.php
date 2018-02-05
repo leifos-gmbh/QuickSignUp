@@ -159,21 +159,21 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	public function appendJS($a_url)
 	{
 		$js = "<script>
-				$('#form_login_modal_plugin').on('submit', function(e) {
-				    var post_url = '".$a_url."';
-				    alert('url = '+ post_url);
-					e.preventDefault();
-					$.ajax({
-						type: 'POST',
-						url: post_url,
-						data: $(this).serializeArray(),
-						success: function(result) { //we got the response
-							 $('.modal-body').html('Successfully called');
-						 }
-						//error:
-					});
+			$('#form_login_modal_plugin').on('submit', function(e) {
+				var post_url = '".$a_url."';
+				alert('url = '+ post_url);
+				e.preventDefault();
+				$.ajax({
+					type: 'POST',
+					url: post_url,
+					data: $(this).serializeArray(),
+					success: function(result) { //we got the response
+						 $('.modal-body').html('Successfully called');
+					 }
+					//error:
 				});
-			</script>";
+			});
+		</script>";
 
 		return $js;
 	}
