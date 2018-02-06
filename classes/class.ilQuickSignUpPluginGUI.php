@@ -13,11 +13,13 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  *       to cancel (right) the workflow and a button to finish or reach the next step in the workflow (left).
  *     2: >
  *
+ * TODO move all the globals to one single point.
+ *
  * @author Jesús López <lopez@leifos.com>
  * @version $Id$
  * @ilCtrl_isCalledBy ilQuickSignUpPluginGUI: ilPCPluggedGUI
  * @ilCtrl_Calls ilQuickSignUpPluginGUI: ilPasswordAssistanceGUI
- * 
+ *
  */
 class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 {
@@ -136,7 +138,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		global $DIC;
 		$f = $DIC->ui()->factory();
 		$r = $DIC->ui()->renderer();
+		$lng = $DIC->language();
 		$ctrl = $DIC->ctrl();
+
 		$ctrl->saveParameter($this, "replaceSignal");
 
 		$this->setTabOption(self::MD_LOGIN_VIEW);
@@ -144,48 +148,44 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		include_once './Services/Authentication/classes/class.ilAuthStatus.php';
 		$status = ilAuthStatus::getInstance();
 
-		ilLoggerFactory::getRootLogger()->debug("STATUS =====> ".$status->getStatus());
+		$current_status = $status->getStatus();
 
-		switch ($status->getStatus())
+		switch ($current_status)
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATED:
-				ilLoggerFactory::getRootLogger()->debug("********** AUTHENTICATED *********");
-				$legacy_content = $this->login_message;
-				break;
+				//todo: lang var
+				echo "welcome_back";
+				exit;
 
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-				ilLoggerFactory::getRootLogger()->debug("********** AUTHENTICATION FAILED *********");
-
 				$this->login_message = $status->getTranslatedReason();
 				//todo remove inline css and use the ilias sendFailure css
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
-				$legacy_content = "<div style='" . $css . "'>" . $this->login_message . "</div>" . $this->getLoginForm()->getHTML();
+				$legacy_content = $r->render($this->getNavigation());
+				$legacy_content .= "<div style='" . $css . "'>" . $this->login_message . "</div>" . $this->getLoginForm()->getHTML();
 				$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
 				$legacy_content .= " ".$this->getPasswordAssistance();
-
-				break;
+				echo $legacy_content;
+				exit;
 		}
-		if ($legacy_content == "")
+
+		if($current_status !=ilAuthStatus::STATUS_AUTHENTICATED && $legacy_content == "")
 		{
-			ilLoggerFactory::getRootLogger()->debug("********** NO LEGACY CONTENT THE VALIDATE THE LOGIN *********");
-
 			$legacy_content = $this->getLoginForm()->getHTML();
-			//$legacy_content .= $this->getPasswordAssistance();
-			//$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
 			$legacy_content .= " ".$this->getPasswordAssistance();
-
 			$legacy_content .= $this->appendLoginJS($this->getLoginValidationUrl());
 		}
 
 		$legacy = $f->legacy($legacy_content);
 
-		$modal = $f->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)));
+		//todo: perform redirect when close button and the user is authenticated successfully
+		$modal = $f->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)))->withCancelButtonLabel($lng->txt('close'));
 		echo $r->renderAsync([$modal]);
 		exit;
 	}
 
 	/**
-	 * Get login screen
+	 * Get register screen
 	 */
 	function register()
 	{
@@ -206,7 +206,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		exit;
 	}
 
-	//todo: if nothing special to do delete this method and use only initFormLogin.
+	//todo: if nothing special to do, delete this method and use only initFormLogin.
 	function getLoginForm()
 	{
 		$form = $this->initFormLogin();
@@ -444,18 +444,17 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	}
 
 
-	//TODO Call to undefined function radius_auth_open() in /Users/leifos/Sites/ILIAS/Services/Radius/classes/class.ilAuthProviderRadius.php:52
-	//TODO change this returns.
+	/**
+	 * It performs the authentication using the form values and calls the login modal again.
+	 */
 	function standardAuthentication()
 	{
-		//WORKING HERE!
-		die("OK AUTHENTICATION METHOD");
-
 		global $DIC;
 		$auth_session = $DIC['ilAuthSession'];
+
 		$form = $this->initFormLogin();
-		if($form->checkInput())
-		{
+
+		if($form->checkInput()) {
 			include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendCredentials.php';
 			$credentials = new ilAuthFrontendCredentials();
 			$credentials->setUsername($form->getInput('username'));
@@ -465,13 +464,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$provider_factory = new ilAuthProviderFactory();
 			$providers = $provider_factory->getProviders($credentials);
 
-			//todo we can delete this status
 			include_once './Services/Authentication/classes/class.ilAuthStatus.php';
 			$status = ilAuthStatus::getInstance();
 
 			include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendFactory.php';
 			$frontend_factory = new ilAuthFrontendFactory();
 			$frontend_factory->setContext(ilAuthFrontendFactory::CONTEXT_STANDARD_FORM);
+
 			$frontend = $frontend_factory->getFrontend(
 				$auth_session,
 				$status,
@@ -480,32 +479,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			);
 
 			$frontend->authenticate();
-			$this->login();
-
-			//todo: we could put this messages and returns directly when check the auth status in gethtml
-			switch($status->getStatus())
-			{
-				case ilAuthStatus::STATUS_AUTHENTICATED:
-					$this->login_success = true;
-
-				/**
-				 *
-				 * TODO:
-				 *
-				 * Activation code status
-				 *
-				 * Migration required status
-				 *
-				 */
-
-				case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-					$this->login_message = $status->getTranslatedReason();
-					return $this->login_success = false;
-			}
 		}
 
-		$this->login_success = $this->lng->txt('err_wrong_login');
-		return $this->login_success = false;
+		$this->login();
 	}
 
 	/**
@@ -529,7 +505,12 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//TODO nothing.
 	}
 
-	//TODO fix the ctrl call
+
+
+	/**
+	 * TODO fix the ctrl call
+	 * @return string with the password assistance links
+	 */
 	public function getPasswordAssistance()
 	{
 		global $DIC;
@@ -551,6 +532,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return "";
 	}
 
+	/**
+	 * @return string control URL to the login modal
+	 */
 	protected function getLoginUrl()
 	{
 		global $DIC;
@@ -561,6 +545,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			"", true);
 	}
 
+	/**
+	 * @return string control URL to the validation method.
+	 */
 	protected function getLoginValidationUrl()
 	{
 		global $DIC;
@@ -581,8 +568,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			"", true);
 	}
 
+	/**
+	 * @param $a_url
+	 * @return string
+	 */
 	public function appendLoginJS($a_url)
 	{
+		//todo lang var
 		$js = "<script>
 			$('#form_login_modal_plugin').on('submit', function(e) {
 				var post_url = '".$a_url."';
@@ -591,17 +583,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					type: 'POST',
 					url: post_url,
 					data: $(this).serialize(),
-					/*dataType: 'text' USE JSON! */
-					success: function(result) { //we got the response
-						//alert('success result = '+result);
-						if(result == 'ok')
-					    {
-					        $('.modal-body').html('validation - result = '+result);
-					    } else {
-						    $('.modal-body').html('JS ok But no validation result= '+result);
-					    }
+					dataType: 'text',
+					success: function(result) {
+						$('.modal-body').html(result);
 					 }
-					//error:
+					error: function(result) {
+						$('.modal-body').html('Something is wrong!');
+					 }
 				});
 			});
 		</script>";
@@ -609,6 +597,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return $js;
 	}
 
+	/**
+	 * This tab option is about the login, register buttons.
+	 * @param $a_view
+	 */
 	public function setTabOption($a_view)
 	{
 		$this->tab_option = $a_view;
