@@ -23,16 +23,11 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  */
 class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 {
-
 	const MD_LOGIN_VIEW = 1;
 	const MD_REGISTER_VIEW = 2;
 
-	var $login_success = false;
-	var $login_message = "";
-
 	var $register_success = false;
 	var $register_message = "";
-
 	var $tab_option = self::MD_LOGIN_VIEW;
 
 	function executeCommand()
@@ -48,6 +43,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				require_once("Services/Init/classes/class.ilPasswordAssistanceGUI.php");
 				return $ctrl->forwardCommand(new ilPasswordAssistanceGUI());
 
+			//todo add register commands in the array.
 			default:
 				// perform valid commands
 				$cmd = $ctrl->getCmd();
@@ -150,6 +146,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$current_status = $status->getStatus();
 
+		$legacy_content = "";
+
 		switch ($current_status)
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATED:
@@ -158,11 +156,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				exit;
 
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-				$this->login_message = $status->getTranslatedReason();
 				//todo remove inline css and use the ilias sendFailure css
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
 				$legacy_content = $r->render($this->getNavigation());
-				$legacy_content .= "<div style='" . $css . "'>" . $this->login_message . "</div>" . $this->getLoginForm()->getHTML();
+				$legacy_content .= "<div style='" . $css . "'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
 				$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
 				$legacy_content .= " ".$this->getPasswordAssistance();
 				echo $legacy_content;
@@ -189,19 +186,23 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function register()
 	{
-		//globals
 		global $DIC;
 		$f = $DIC->ui()->factory();
 		$r = $DIC->ui()->renderer();
+		$lng = $DIC->language();
 		$ctrl = $DIC->ctrl();
+
 		$ctrl->saveParameter($this, "replaceSignal");
 
 		$this->setTabOption(self::MD_REGISTER_VIEW);
 
-		$legacy = $f->legacy("<p>The Registration Page</p>");
+		$legacy_content = $this->initFormRegister()->getHTML();
+
+		$legacy = $f->legacy($legacy_content);
+
+		//todo lang var
 		$modal = $f->modal()->roundtrip("Registration", array_merge($this->getNavigation(), array($legacy)));
 
-		//$modal = $modal->withContent([$button1, $button2]);
 		echo $r->renderAsync([$modal]);
 		exit;
 	}
@@ -216,7 +217,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	function getRegisterForm()
 	{
-		return "Register";
+		$form = $this->initFormRegister();
+
+		return $form;
 	}
 
 	function test()
@@ -605,5 +608,134 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	{
 		$this->tab_option = $a_view;
 	}
+
+	public function initFormRegister()
+	{
+		global $DIC;
+
+		$lng = $DIC->language();
+		$ctrl = $DIC->ctrl();
+		$user = $DIC->user();
+
+		$registration_settings = new ilRegistrationSettings();
+
+		$code_enabled = ($registration_settings->registrationCodeRequired() ||
+			$registration_settings->getAllowCodes());
+
+		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
+		$form = new ilPropertyFormGUI();
+
+		$form->setFormAction($ctrl->getFormAction($this));
+
+		// user defined fields
+
+		$user_defined_data = $user->getUserDefinedData();
+
+		include_once './Services/User/classes/class.ilUserDefinedFields.php';
+		$user_defined_fields =& ilUserDefinedFields::_getInstance();
+		$custom_fields = array();
+		foreach($user_defined_fields->getRegistrationDefinitions() as $field_id => $definition)
+		{
+			if($definition['field_type'] == UDF_TYPE_TEXT)
+			{
+				$custom_fields["udf_".$definition['field_id']] =
+					new ilTextInputGUI($definition['field_name'], "udf_".$definition['field_id']);
+				$custom_fields["udf_".$definition['field_id']]->setValue($user_defined_data["f_".$field_id]);
+				$custom_fields["udf_".$definition['field_id']]->setMaxLength(255);
+				$custom_fields["udf_".$definition['field_id']]->setSize(40);
+			}
+			else if($definition['field_type'] == UDF_TYPE_WYSIWYG)
+			{
+				$custom_fields["udf_".$definition['field_id']] =
+					new ilTextAreaInputGUI($definition['field_name'], "udf_".$definition['field_id']);
+				$custom_fields["udf_".$definition['field_id']]->setValue($user_defined_data["f_".$field_id]);
+				$custom_fields["udf_".$definition['field_id']]->setUseRte(true);
+			}
+			else
+			{
+				$custom_fields["udf_".$definition['field_id']] =
+					new ilSelectInputGUI($definition['field_name'], "udf_".$definition['field_id']);
+				$custom_fields["udf_".$definition['field_id']]->setValue($user_defined_data["f_".$field_id]);
+				$custom_fields["udf_".$definition['field_id']]->setOptions(
+					$user_defined_fields->fieldValuesToSelectArray($definition['field_values']));
+			}
+			if($definition['required'])
+			{
+				$custom_fields["udf_".$definition['field_id']]->setRequired(true);
+			}
+
+			if($definition['field_type'] == UDF_TYPE_SELECT && !$user_defined_data["f_".$field_id])
+			{
+				$options = array(""=>$lng->txt("please_select")) + $custom_fields["udf_".$definition['field_id']]->getOptions();
+				$custom_fields["udf_".$definition['field_id']]->setOptions($options);
+			}
+		}
+
+
+		// standard fields
+		include_once("./Services/User/classes/class.ilUserProfile.php");
+		$up = new ilUserProfile();
+		$up->setMode(ilUserProfile::MODE_REGISTRATION);
+		$up->skipGroup("preferences");
+
+		$up->setAjaxCallback(
+			$ctrl->getLinkTarget($this, 'doProfileAutoComplete', '', true)
+		);
+
+		$lng->loadLanguageModule("user");
+
+		// add fields to form
+		$up->addStandardFieldsToForm($form, NULL, $custom_fields);
+		unset($custom_fields);
+
+
+		// #11407
+		$domains = array();
+		foreach($registration_settings->getAllowedDomains() as $item)
+		{
+			if(trim($item))
+			{
+				$domains[] = $item;
+			}
+		}
+		if(sizeof($domains))
+		{
+			$mail_obj = $form->getItemByPostVar('usr_email');
+			$mail_obj->setInfo(sprintf($lng->txt("reg_email_domains"),
+					implode(", ", $domains))."<br />".
+				($code_enabled ? $lng->txt("reg_email_domains_code") : ""));
+		}
+
+		// #14272
+		if($registration_settings->getRegistrationType() == IL_REG_ACTIVATION)
+		{
+			$mail_obj = $form->getItemByPostVar('usr_email');
+			if($mail_obj) // #16087
+			{
+				$mail_obj->setRequired(true);
+			}
+		}
+
+		require_once 'Services/TermsOfService/classes/class.ilTermsOfServiceSignableDocumentFactory.php';
+		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($lng);
+		if(ilTermsOfServiceHelper::isEnabled() && $document->exists())
+		{
+			$field = new ilFormSectionHeaderGUI();
+			$field->setTitle($lng->txt('usr_agreement'));
+			$form->addItem($field);
+
+			$field = new ilCustomInputGUI();
+			$field->setHTML('<div id="agreement">' . $document->getContent() . '</div>');
+			$form->addItem($field);
+
+			$field = new ilCheckboxInputGUI($lng->txt('accept_usr_agreement'), 'accept_terms_of_service');
+			$field->setRequired(true);
+			$field->setValue(1);
+			$form->addItem($field);
+		}
+
+		$form->addCommandButton("saveForm", $lng->txt("register"));
+
+		return $form;
+	}
 }
-?>
