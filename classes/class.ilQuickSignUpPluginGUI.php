@@ -586,7 +586,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					dataType: 'text',
 					success: function(result) {
 						$('.modal-body').html(result);
-					 }
+					 },
 					error: function(result) {
 						$('.modal-body').html('Something is wrong!');
 					 }
