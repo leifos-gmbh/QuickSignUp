@@ -17,7 +17,7 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * @version $Id$
  * @ilCtrl_isCalledBy ilQuickSignUpPluginGUI: ilPCPluggedGUI
  * @ilCtrl_Calls ilQuickSignUpPluginGUI: ilPasswordAssistanceGUI
-
+ * 
  */
 class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 {
@@ -49,7 +49,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			default:
 				// perform valid commands
 				$cmd = $ctrl->getCmd();
-				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register")))
+				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register","standardAuthentication")))
 				{
 					$this->$cmd();
 				}
@@ -110,6 +110,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//Only show the buttons if ILIAS allows to create new registrations
 		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
 		{
+			//todo: use custom CSS following the FW entry.
 			if($this->tab_option == self::MD_LOGIN_VIEW) {
 				$button1 = $f->button()->standard('Login', '#')->withUnavailableAction();
 				$button2 = $f->button()->standard('Registration', '#')
@@ -143,29 +144,39 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		include_once './Services/Authentication/classes/class.ilAuthStatus.php';
 		$status = ilAuthStatus::getInstance();
 
+		ilLoggerFactory::getRootLogger()->debug("STATUS =====> ".$status->getStatus());
+
 		switch ($status->getStatus())
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATED:
+				ilLoggerFactory::getRootLogger()->debug("********** AUTHENTICATED *********");
 				$legacy_content = $this->login_message;
 				break;
 
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
+				ilLoggerFactory::getRootLogger()->debug("********** AUTHENTICATION FAILED *********");
+
 				$this->login_message = $status->getTranslatedReason();
 				//todo remove inline css and use the ilias sendFailure css
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
 				$legacy_content = "<div style='" . $css . "'>" . $this->login_message . "</div>" . $this->getLoginForm()->getHTML();
-				$legacy_content .= $this->getPasswordAssistance();
 				$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
+				$legacy_content .= " ".$this->getPasswordAssistance();
+
 				break;
 		}
 		if ($legacy_content == "")
 		{
+			ilLoggerFactory::getRootLogger()->debug("********** NO LEGACY CONTENT THE VALIDATE THE LOGIN *********");
+
 			$legacy_content = $this->getLoginForm()->getHTML();
-			$legacy_content .= $this->getPasswordAssistance();
+			//$legacy_content .= $this->getPasswordAssistance();
+			//$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
+			$legacy_content .= " ".$this->getPasswordAssistance();
+
 			$legacy_content .= $this->appendLoginJS($this->getLoginValidationUrl());
 		}
 
-		//$legacy_content .= $this->getPasswordAssistance;
 		$legacy = $f->legacy($legacy_content);
 
 		$modal = $f->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)));
@@ -432,10 +443,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return $form;
 	}
 
+
+	//TODO Call to undefined function radius_auth_open() in /Users/leifos/Sites/ILIAS/Services/Radius/classes/class.ilAuthProviderRadius.php:52
+	//TODO change this returns.
 	function standardAuthentication()
 	{
-
-		ilLoggerFactory::getRootLogger()->debug("//Standard Authentication! ");
+		//WORKING HERE!
+		die("OK AUTHENTICATION METHOD");
 
 		global $DIC;
 		$auth_session = $DIC['ilAuthSession'];
@@ -466,12 +480,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			);
 
 			$frontend->authenticate();
+			$this->login();
 
 			//todo: we could put this messages and returns directly when check the auth status in gethtml
 			switch($status->getStatus())
 			{
 				case ilAuthStatus::STATUS_AUTHENTICATED:
-					return $this->login_success = true;
+					$this->login_success = true;
 
 				/**
 				 *
@@ -541,7 +556,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		global $DIC;
 		$ctrl = $DIC->ctrl();
 		$pl = $this->getPlugin();
-		
+
 		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
 			"", true);
 	}
@@ -571,13 +586,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$js = "<script>
 			$('#form_login_modal_plugin').on('submit', function(e) {
 				var post_url = '".$a_url."';
-				alert('url = '+ post_url);
 				e.preventDefault();
 				$.ajax({
 					type: 'POST',
 					url: post_url,
-					data: $(this).serializeArray(),
+					data: $(this).serialize(),
+					/*dataType: 'text' USE JSON! */
 					success: function(result) { //we got the response
+						//alert('success result = '+result);
 						if(result == 'ok')
 					    {
 					        $('.modal-body').html('validation - result = '+result);
