@@ -527,12 +527,22 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		// allow password assistance? Surpress option if Authmode is not local database
 		if ($il_setting->get("password_assistance"))
 		{
+			//todo try to do this other way like "jumpToRegistration"
 			$link_pass = $f->link()->standard($lng->txt("forgot_password"),$ctrl->getLinkTargetByClass("ilpasswordassistancegui", ""));
 			$link_name = $f->link()->standard($lng->txt("forgot_username"),$ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm"));
 			return $r->render($link_pass)." ".$r->render($link_name);
 		}
 
 		return "";
+	}
+
+	public function jumpToNameAssistance()
+	{
+		//TODO
+		//change base class and do something like this.
+		//$this->ctrl->setCmdClass("ilpasswordassistancegui");
+		//$this->ctrl->setCmd("showUsernameAssistanceForm");
+		//$this->executeCommand();
 	}
 
 	/**
@@ -626,9 +636,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$form = new ilPropertyFormGUI();
 
 		$form->setFormAction($ctrl->getFormAction($this));
+		$form->setShowTopButtons(false);
 
 		// user defined fields
-
 		$user_defined_data = $user->getUserDefinedData();
 
 		include_once './Services/User/classes/class.ilUserDefinedFields.php';
@@ -671,13 +681,40 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			}
 		}
 
-
 		// standard fields
 		include_once("./Services/User/classes/class.ilUserProfile.php");
 		$up = new ilUserProfile();
 		$up->setMode(ilUserProfile::MODE_REGISTRATION);
 		$up->skipGroup("preferences");
+		$up->skipGroup("settings");
 
+//todo try to find a way to add fields instead of remove them.
+//TODO: ask if the plugin should have the same fields and configuration than the normal login in ilias configured in admin users.
+		//$up->skipGroup("interests");
+		//$up->skipGroup("personal_data");
+		//$up->skipGroup("other");
+
+		/*$fields_to_skip = array (
+			"institution",
+			"department",
+			"street",
+			"zipcode",
+			"city",
+			"country",
+			"phone_office",
+			"phone_home",
+			"phone_mobile",
+			"fax",
+			"second_email"
+		);
+		foreach($fields_to_skip as $field)
+		{
+			$up->skipField($field);
+		}*/
+
+/*
+ * STILL WORKING HERE!
+ */
 		$up->setAjaxCallback(
 			$ctrl->getLinkTarget($this, 'doProfileAutoComplete', '', true)
 		);
