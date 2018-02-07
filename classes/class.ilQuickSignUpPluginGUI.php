@@ -152,7 +152,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATED:
 				//todo: lang var
-				echo "welcome_back";
+				$auth_result = array(
+					"status" => "ok",
+					"html" => "welcome_back"
+				);
+				echo json_encode($auth_result);
 				exit;
 
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
@@ -162,7 +166,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				$legacy_content .= "<div style='" . $css . "'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
 				$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
 				$legacy_content .= " ".$this->getPasswordAssistance();
-				echo $legacy_content;
+				$auth_result = array(
+					"status" => "ko",
+					"html" => $legacy_content
+				);
+				echo json_encode($auth_result);
 				exit;
 		}
 
@@ -596,9 +604,12 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					type: 'POST',
 					url: post_url,
 					data: $(this).serialize(),
-					dataType: 'text',
+					dataType: 'json',
 					success: function(result) {
-						$('.modal-body').html(result);
+						$('.modal-body').html(result['html']);
+						if(result['status'] === 'ok') {
+						    setTimeout(function(){ location.reload() }, 1000);
+						}
 					 },
 					error: function(result) {
 						$('.modal-body').html('Something is wrong!');
