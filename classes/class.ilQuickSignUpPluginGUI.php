@@ -30,26 +30,56 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	var $register_message = "";
 	var $tab_option = self::MD_LOGIN_VIEW;
 
+	var $globals_init = false;
+	var $ctrl;
+	var $user;
+	var $tpl;
+	var $lng;
+	var $ui_factory;
+	var $ui_renderer;
+
+	/**
+	 * global vars initialization.
+	 */
+	function globalsInit()
+	{
+		global $DIC, $tpl;
+
+		$this->ctrl = $DIC->ctrl();
+		$this->user = $DIC->user();
+		$this->tpl = $tpl;
+		$this->lng = $DIC->language();
+		$this->ui_factory = $DIC->ui()->factory();
+		$this->ui_renderer = $DIC->ui()->renderer();
+
+		$this->globals_init = true;
+
+	}
+
 	function executeCommand()
 	{
-		global $DIC;
-		$ctrl = $DIC->ctrl();
-
-		$next_class = $ctrl->getNextClass();
+		if(!$this->globals_init) {
+			$this->globalsInit();
+		}
+		$next_class = $this->ctrl->getNextClass();
 
 		switch ($next_class)
 		{
 			case "ilpasswordassistancegui":
 				require_once("Services/Init/classes/class.ilPasswordAssistanceGUI.php");
-				return $ctrl->forwardCommand(new ilPasswordAssistanceGUI());
+				return $this->ctrl->forwardCommand(new ilPasswordAssistanceGUI());
 
 			//todo add register commands in the array.
 			default:
 				// perform valid commands
-				$cmd = $ctrl->getCmd();
-				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register","standardAuthentication")))
+				$cmd = $this->ctrl->getCmd();
+				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register","standardAuthentication", "jumpToPasswordAssistance")))
 				{
 					$this->$cmd();
+				}
+				//todo remove this else
+				else {
+					die("WOOOOOOUUUPS! no method found");
 				}
 				break;
 		}
@@ -63,26 +93,21 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function getElementHTML($a_mode, array $a_properties, $a_plugin_version)
 	{
-		//globals
-		global $DIC;
-		$user = $DIC->user();
-
+		if(!$this->globals_init) {
+			$this->globalsInit();
+		}
 		//If the user is not anonymous exit.
-		if(!$user->isAnonymous()) {
+		if(!$this->user->isAnonymous()) {
 			return "";
 		}
 
-		$f = $DIC->ui()->factory();
-		$r = $DIC->ui()->renderer();
-		$ctrl = $DIC->ctrl();
-
-		$modal = $f->modal()->roundtrip("Modal Title", $f->legacy(""));
-		$ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
+		$modal = $this->ui_factory->modal()->roundtrip("Modal Title", $this->ui_factory->legacy(""));
+		$this->ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
 
 		$modal = $modal->withAsyncRenderUrl($this->getLoginUrl());
-		$button = $f->button()->standard("Sign In", '#')
+		$button = $this->ui_factory->button()->standard("Sign In", '#')
 			->withOnClick($modal->getShowSignal());
-		$content = $r->render([$modal, $button]);
+		$content = $this->ui_renderer->render([$modal, $button]);
 
 		return $content;
 	}
@@ -95,11 +120,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function getNavigation()
 	{
-		//globals
-		global $DIC;
-		$f = $DIC->ui()->factory();
-		$ctrl = $DIC->ctrl();
-
 		$replaceSignal = new \ILIAS\UI\Implementation\Component\Modal\ReplaceContentSignal($_GET["replaceSignal"]);
 
 		$login_url = $this->getLoginUrl();
@@ -110,19 +130,19 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		{
 			//todo: use custom CSS following the FW entry.
 			if($this->tab_option == self::MD_LOGIN_VIEW) {
-				$button1 = $f->button()->standard('Login', '#')->withUnavailableAction();
-				$button2 = $f->button()->standard('Registration', '#')
+				$button1 = $this->ui_factory->button()->standard('Login', '#')->withUnavailableAction();
+				$button2 = $this->ui_factory->button()->standard('Registration', '#')
 					->withOnClick($replaceSignal->withAsyncRenderUrl($register_url));
 			} else {
-				$button1 = $f->button()->standard('Login', '#')
+				$button1 = $this->ui_factory->button()->standard('Login', '#')
 					->withOnClick($replaceSignal->withAsyncRenderUrl($login_url));
-				$button2 = $f->button()->standard('Registration', '#')->withUnavailableAction();
+				$button2 = $this->ui_factory->button()->standard('Registration', '#')->withUnavailableAction();
 			}
 
 			return array($button1, $button2);
 		}
 
-		return array($f->legacy(""));
+		return array($this->ui_factory->legacy(""));
 	}
 
 
@@ -131,13 +151,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function login()
 	{
-		global $DIC;
-		$f = $DIC->ui()->factory();
-		$r = $DIC->ui()->renderer();
-		$lng = $DIC->language();
-		$ctrl = $DIC->ctrl();
-
-		$ctrl->saveParameter($this, "replaceSignal");
+		$this->ctrl->saveParameter($this, "replaceSignal");
 
 		$this->setTabOption(self::MD_LOGIN_VIEW);
 
@@ -162,7 +176,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
 				//todo remove inline css and use the ilias sendFailure css
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
-				$legacy_content = $r->render($this->getNavigation());
+				$legacy_content = $this->ui_renderer->render($this->getNavigation());
 				$legacy_content .= "<div style='" . $css . "'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
 				$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
 				$legacy_content .= " ".$this->getPasswordAssistance();
@@ -181,11 +195,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$legacy_content .= $this->appendLoginJS($this->getLoginValidationUrl());
 		}
 
-		$legacy = $f->legacy($legacy_content);
+		$legacy = $this->ui_factory->legacy($legacy_content);
 
 		//todo: perform redirect when close button and the user is authenticated successfully
-		$modal = $f->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)))->withCancelButtonLabel($lng->txt('close'));
-		echo $r->renderAsync([$modal]);
+		$modal = $this->ui_factory->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)))->withCancelButtonLabel($this->lng->txt('close'));
+		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
 	}
 
@@ -194,24 +208,18 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function register()
 	{
-		global $DIC;
-		$f = $DIC->ui()->factory();
-		$r = $DIC->ui()->renderer();
-		$lng = $DIC->language();
-		$ctrl = $DIC->ctrl();
-
-		$ctrl->saveParameter($this, "replaceSignal");
+		$this->ctrl->saveParameter($this, "replaceSignal");
 
 		$this->setTabOption(self::MD_REGISTER_VIEW);
 
 		$legacy_content = $this->initFormRegister()->getHTML();
 
-		$legacy = $f->legacy($legacy_content);
+		$legacy = $this->ui_factory->legacy($legacy_content);
 
 		//todo lang var
-		$modal = $f->modal()->roundtrip("Registration", array_merge($this->getNavigation(), array($legacy)));
+		$modal = $this->ui_factory->modal()->roundtrip("Registration", array_merge($this->getNavigation(), array($legacy)));
 
-		echo $r->renderAsync([$modal]);
+		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
 	}
 
@@ -230,11 +238,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return $form;
 	}
 
-	function test()
-	{
-		die("Voila");
-	}
-
 	/**
 	 * Create
 	 *
@@ -243,10 +246,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function insert()
 	{
-		global $tpl;
-
 		$form = $this->initForm(true);
-		$tpl->setContent($form->getHTML());
+		$this->tpl->setContent($form->getHTML());
 	}
 
 	/**
@@ -254,8 +255,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	public function create()
 	{
-		global $tpl, $lng, $ilCtrl;
-
 		$form = $this->initForm(true);
 		if ($form->checkInput())
 		{
@@ -265,13 +264,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			);
 			if ($this->createElement($properties))
 			{
-				ilUtil::sendSuccess($lng->txt("msg_obj_modified"), true);
+				ilUtil::sendSuccess($this->lng->txt("msg_obj_modified"), true);
 				$this->returnToParent();
 			}
 		}
 
 		$form->setValuesByPost();
-		$tpl->setContent($form->getHtml());
+		$this->tpl->setContent($form->getHtml());
 	}
 
 	/**
@@ -282,12 +281,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function edit()
 	{
-		global $tpl;
-
 		$this->setTabs("edit");
 
 		$form = $this->initForm();
-		$tpl->setContent($form->getHTML());
+		$this->tpl->setContent($form->getHTML());
 	}
 
 	/**
@@ -298,8 +295,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function update()
 	{
-		global $tpl, $lng, $ilCtrl;
-
 		$form = $this->initForm(true);
 		if ($form->checkInput())
 		{
@@ -309,13 +304,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			);
 			if ($this->updateElement($properties))
 			{
-				ilUtil::sendSuccess($lng->txt("msg_obj_modified"), true);
+				ilUtil::sendSuccess($this->lng->txt("msg_obj_modified"), true);
 				$this->returnToParent();
 			}
 		}
 
 		$form->setValuesByPost();
-		$tpl->setContent($form->getHtml());
+		$this->tpl->setContent($form->getHtml());
 
 	}
 
@@ -327,8 +322,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	public function initForm($a_create = false)
 	{
-		global $lng, $ilCtrl;
-
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
 
@@ -356,17 +349,17 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if ($a_create)
 		{
 			$this->addCreationButton($form);
-			$form->addCommandButton("cancel", $lng->txt("cancel"));
+			$form->addCommandButton("cancel", $this->lng->txt("cancel"));
 			$form->setTitle($this->getPlugin()->txt("cmd_insert"));
 		}
 		else
 		{
-			$form->addCommandButton("update", $lng->txt("save"));
-			$form->addCommandButton("cancel", $lng->txt("cancel"));
+			$form->addCommandButton("update", $this->lng->txt("save"));
+			$form->addCommandButton("cancel", $this->lng->txt("cancel"));
 			$form->setTitle($this->getPlugin()->txt("edit_ex_el"));
 		}
 
-		$form->setFormAction($ilCtrl->getFormAction($this));
+		$form->setFormAction($this->ctrl->getFormAction($this));
 
 		return $form;
 	}
@@ -387,15 +380,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function setTabs($a_active)
 	{
-		global $ilTabs, $ilCtrl;
+		global $ilTabs;
 
 		$pl = $this->getPlugin();
 
 		$ilTabs->addTab("edit", $pl->txt("settings_1"),
-			$ilCtrl->getLinkTarget($this, "edit"));
+			$this->ctrl->getLinkTarget($this, "edit"));
 
 		$ilTabs->addTab("edit2", $pl->txt("settings_2"),
-			$ilCtrl->getLinkTarget($this, "edit2"));
+			$this->ctrl->getLinkTarget($this, "edit2"));
 
 		$ilTabs->activateTab($a_active);
 	}
@@ -408,8 +401,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function edit2()
 	{
-		global $tpl;
-
 		$this->setTabs("edit2");
 
 		ilUtil::sendInfo($this->getPlugin()->txt("more_editing"));
@@ -421,25 +412,20 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function initFormLogin()
 	{
-		global $DIC;
-
-		$lng = $DIC->language();
-		$ctrl = $DIC->ctrl();
-
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
 
-		$form->setFormAction($ctrl->getFormAction($this));
+		$form->setFormAction($this->ctrl->getFormAction($this));
 		$form->setName("formlogin");
 		$form->setId("login_modal_plugin");
 		$form->setShowTopButtons(false);
 
-		$ti = new ilTextInputGUI($lng->txt("username"), "username");
+		$ti = new ilTextInputGUI($this->lng->txt("username"), "username");
 		$ti->setSize(20);
 		$ti->setRequired(true);
 		$form->addItem($ti);
 
-		$pi = new ilPasswordInputGUI($lng->txt("password"), "password");
+		$pi = new ilPasswordInputGUI($this->lng->txt("password"), "password");
 		$pi->setUseStripSlashes(false);
 		$pi->setRetype(false);
 		$pi->setSkipSyntaxCheck(true);
@@ -449,7 +435,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$form->addItem($pi);
 
 		//async
-		$form->addCommandButton("standardAuthentication", $lng->txt("log_in"));
+		$form->addCommandButton("standardAuthentication", $this->lng->txt("log_in"));
 
 		return $form;
 	}
@@ -501,13 +487,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	public function getNewToIlias()
 	{
-		global $DIC;
-		$lng = $DIC->language();
-		$ctrl = $DIC->ctrl();
-
 		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
 		{
-			return $lng->txt("registration").$ctrl->getLinkTargetByClass("ilaccountregistrationgui", "");
+			return $this->lng->txt("registration").$this->ctrl->getLinkTargetByClass("ilaccountregistrationgui", "");
 		}
 	}
 
@@ -527,23 +509,33 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		global $DIC;
 
 		$il_setting = $DIC->settings();
-		$lng = $DIC->language();
-		$ctrl = $DIC->ctrl();
-		$f = $DIC->ui()->factory();
-		$r = $DIC->ui()->renderer();
 
 		// allow password assistance? Surpress option if Authmode is not local database
 		if ($il_setting->get("password_assistance"))
 		{
 			//todo try to do this other way like "jumpToRegistration"
-			$link_pass = $f->link()->standard($lng->txt("forgot_password"),$ctrl->getLinkTargetByClass("ilpasswordassistancegui", ""));
-			$link_name = $f->link()->standard($lng->txt("forgot_username"),$ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm"));
-			return $r->render($link_pass)." ".$r->render($link_name);
+			//$link_pass = $this->ui_factory->link()->standard($this->lng->txt("forgot_password"),$this->ctrl->getLinkTargetByClass("ilpasswordassistancegui", ""));
+			$link_pass = $this->ui_factory->link()->standard($this->lng->txt("forgot_password"),$this->ctrl->getLinkTarget($this, "jumpToPasswordAssistance"));
+			$link_name = $this->ui_factory->link()->standard($this->lng->txt("forgot_username"),$this->ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm"));
+			return $this->ui_renderer->render($link_pass)." ".$this->ui_renderer->render($link_name);
 		}
 
 		return "";
 	}
 
+	public function jumpToPasswordAssistance()
+	{
+
+		//global $ilCtrl;
+
+		//$ilCtrl->setCmdClass(" ilpasswordassistancegui");
+		//$this->ctrl->setCmdClass("ilpasswordassistancegui");
+
+		//ilLoggerFactory::getRootLogger()->debug("next = ".$ilCtrl->getNextClass());
+		//$this->ctrl->initBaseClass("ilStartUpGUI");
+		//$this->ctrl->
+		//$this->executeCommand();
+	}
 	public function jumpToNameAssistance()
 	{
 		//TODO
@@ -558,11 +550,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	protected function getLoginUrl()
 	{
-		global $DIC;
-		$ctrl = $DIC->ctrl();
 		$pl = $this->getPlugin();
 
-		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
+		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
 			"", true);
 	}
 
@@ -571,21 +561,17 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	protected function getLoginValidationUrl()
 	{
-		global $DIC;
-		$ctrl = $DIC->ctrl();
 		$pl = $this->getPlugin();
 
-		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "standardAuthentication",
+		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "standardAuthentication",
 			"", true);
 	}
 
 	protected function getRegisterUrl()
 	{
-		global $DIC;
-		$ctrl = $DIC->ctrl();
 		$pl = $this->getPlugin();
 
-		return $ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "register",
+		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "register",
 			"", true);
 	}
 
@@ -632,12 +618,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	public function initFormRegister()
 	{
-		global $DIC;
-
-		$lng = $DIC->language();
-		$ctrl = $DIC->ctrl();
-		$user = $DIC->user();
-
 		$registration_settings = new ilRegistrationSettings();
 
 		$code_enabled = ($registration_settings->registrationCodeRequired() ||
@@ -646,11 +626,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
 
-		$form->setFormAction($ctrl->getFormAction($this));
+		$form->setFormAction($this->ctrl->getFormAction($this));
 		$form->setShowTopButtons(false);
 
 		// user defined fields
-		$user_defined_data = $user->getUserDefinedData();
+		$user_defined_data = $this->user->getUserDefinedData();
 
 		include_once './Services/User/classes/class.ilUserDefinedFields.php';
 		$user_defined_fields =& ilUserDefinedFields::_getInstance();
@@ -687,7 +667,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 			if($definition['field_type'] == UDF_TYPE_SELECT && !$user_defined_data["f_".$field_id])
 			{
-				$options = array(""=>$lng->txt("please_select")) + $custom_fields["udf_".$definition['field_id']]->getOptions();
+				$options = array(""=>$this->lng->txt("please_select")) + $custom_fields["udf_".$definition['field_id']]->getOptions();
 				$custom_fields["udf_".$definition['field_id']]->setOptions($options);
 			}
 		}
@@ -727,10 +707,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
  * STILL WORKING HERE!
  */
 		$up->setAjaxCallback(
-			$ctrl->getLinkTarget($this, 'doProfileAutoComplete', '', true)
+			$this->ctrl->getLinkTarget($this, 'doProfileAutoComplete', '', true)
 		);
 
-		$lng->loadLanguageModule("user");
+		$this->lng->loadLanguageModule("user");
 
 		// add fields to form
 		$up->addStandardFieldsToForm($form, NULL, $custom_fields);
@@ -749,9 +729,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if(sizeof($domains))
 		{
 			$mail_obj = $form->getItemByPostVar('usr_email');
-			$mail_obj->setInfo(sprintf($lng->txt("reg_email_domains"),
+			$mail_obj->setInfo(sprintf($this->lng->txt("reg_email_domains"),
 					implode(", ", $domains))."<br />".
-				($code_enabled ? $lng->txt("reg_email_domains_code") : ""));
+				($code_enabled ? $this->lng->txt("reg_email_domains_code") : ""));
 		}
 
 		// #14272
@@ -765,24 +745,24 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		}
 
 		require_once 'Services/TermsOfService/classes/class.ilTermsOfServiceSignableDocumentFactory.php';
-		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($lng);
+		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($this->lng);
 		if(ilTermsOfServiceHelper::isEnabled() && $document->exists())
 		{
 			$field = new ilFormSectionHeaderGUI();
-			$field->setTitle($lng->txt('usr_agreement'));
+			$field->setTitle($this->lng->txt('usr_agreement'));
 			$form->addItem($field);
 
 			$field = new ilCustomInputGUI();
 			$field->setHTML('<div id="agreement">' . $document->getContent() . '</div>');
 			$form->addItem($field);
 
-			$field = new ilCheckboxInputGUI($lng->txt('accept_usr_agreement'), 'accept_terms_of_service');
+			$field = new ilCheckboxInputGUI($this->lng->txt('accept_usr_agreement'), 'accept_terms_of_service');
 			$field->setRequired(true);
 			$field->setValue(1);
 			$form->addItem($field);
 		}
 
-		$form->addCommandButton("saveForm", $lng->txt("register"));
+		$form->addCommandButton("saveForm", $this->lng->txt("register"));
 
 		return $form;
 	}
