@@ -506,11 +506,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		// allow password assistance? Surpress option if Authmode is not local database
 		if ($il_setting->get("password_assistance"))
 		{
-			//todo try to do this other way like "jumpToRegistration"
-			//$link_pass = $this->ui_factory->link()->standard($this->lng->txt("forgot_password"),$this->ctrl->getLinkTargetByClass("ilpasswordassistancegui", ""));
-			$link_pass = $this->ui_factory->link()->standard($this->lng->txt("forgot_password"),$this->ctrl->getLinkTarget($this, "jumpToPasswordAssistance"));
-			$link_name = $this->ui_factory->link()->standard($this->lng->txt("forgot_username"),$this->ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm"));
-			return $this->ui_renderer->render($link_pass)." ".$this->ui_renderer->render($link_name);
+			//todo: fix this links
+			$link_pass = $this->ui_factory->button()->shy($this->lng->txt("forgot_password"), $this->ctrl->getLinkTarget($this, "jumpToPasswordAssistance"));
+			$link_name = $this->ui_factory->button()->shy($this->lng->txt("forgot_username"),$this->ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm"));
+
+			return $this->ui_renderer->render($link_pass)."&nbsp;&nbsp;".$this->ui_renderer->render($link_name);
 		}
 
 		return "";
