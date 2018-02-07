@@ -1,7 +1,7 @@
 # QuickSignUp
 Plugin to add Sign in/Sign up button into pages opening one modalbox where the user can do login/register filling the form.
 
-Only Anonnimous  
+Only Anonymous  
 
 Only standard users are allowed to use this method. For instance  Apache/Shibboleth ... are not allowed.
 

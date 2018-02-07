@@ -73,7 +73,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			default:
 				// perform valid commands
 				$cmd = $this->ctrl->getCmd();
-				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register","standardAuthentication", "jumpToPasswordAssistance")))
+				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register","standardAuthentication", "jumpToPasswordAssistance", "saveRegistration")))
 				{
 					$this->$cmd();
 				}
@@ -145,7 +145,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return array($this->ui_factory->legacy(""));
 	}
 
-
 	/**
 	 * Get login screen
 	 */
@@ -159,8 +158,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$status = ilAuthStatus::getInstance();
 
 		$current_status = $status->getStatus();
-
-		$legacy_content = "";
 
 		switch ($current_status)
 		{
@@ -314,7 +311,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	}
 
-
 	/**
 	 * Init editing form
 	 *
@@ -406,7 +402,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		ilUtil::sendInfo($this->getPlugin()->txt("more_editing"));
 	}
 
-
 	/**
 	 * @return ilPropertyFormGUI
 	 */
@@ -439,7 +434,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		return $form;
 	}
-
 
 	/**
 	 * It performs the authentication using the form values and calls the login modal again.
@@ -499,7 +493,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	}
 
 
-
 	/**
 	 * TODO fix the ctrl call
 	 * @return string with the password assistance links
@@ -536,6 +529,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//$this->ctrl->
 		//$this->executeCommand();
 	}
+
 	public function jumpToNameAssistance()
 	{
 		//TODO
@@ -762,8 +756,29 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$form->addItem($field);
 		}
 
-		$form->addCommandButton("saveForm", $this->lng->txt("register"));
+		$form->addCommandButton("saveRegistration", $this->lng->txt("register"));
 
 		return $form;
+	}
+
+	protected function saveRegistration()
+	{
+		echo "perfect, validation should be done here";
+		exit;
+
+		//$form = $this->initFormRegister();
+
+		//$form_valid = $form->
+
+		//$form_valid = false;
+
+
+/** TODO: IS THIS CONDITIONAL NEEDED???
+if($form->checkInput()) {
+  //all login here
+}
+ */
+
+
 	}
 }
