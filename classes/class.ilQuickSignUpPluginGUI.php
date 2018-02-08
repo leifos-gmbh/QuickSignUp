@@ -12,8 +12,15 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  *       Round-Trip modals MUST contain at least two buttons at the bottom of the modals: a button
  *       to cancel (right) the workflow and a button to finish or reach the next step in the workflow (left).
  *     2: >
+ * In the registration form we are not showing the available domains if limited. But we are
+ * taking care about it when validate the form.
  *
- * TODO move all the globals to one single point.
+ *TODO: try to move all the HTML to templates
+ *TODO: If fields empty we are getting the something is wrong message.
+ *TODO: (save user registration)Should we take care about this auto generated pass?
+ *TODO: ask by terms of service. I just want to show a short text saying something like:
+ *    By creating an account, you agree to our Terms and Conditions and Privacy Statement.
+ *
  *
  * @author Jesús López <lopez@leifos.com>
  * @version $Id$
@@ -31,11 +38,34 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	var $tab_option = self::MD_LOGIN_VIEW;
 
 	var $globals_init = false;
+
+	/**
+	 * @var ilCtrl
+	 */
 	var $ctrl;
+	/**
+	 * @var ilObjUser
+	 */
+
 	var $user;
+
+	/**
+	 * @var ilTemplate
+	 */
 	var $tpl;
+	/**
+	 * @var ilLanguage
+	 */
 	var $lng;
+
+	/**
+	 * @var \ILIAS\UI\Factory
+	 */
 	var $ui_factory;
+
+	/**
+	 * @var \ILIAS\UI\Renderer
+	 */
 	var $ui_renderer;
 
 	/**
@@ -53,6 +83,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$this->ui_renderer = $DIC->ui()->renderer();
 
 		$this->globals_init = true;
+
+		//ok not nice this line here
+		$this->tpl->addCss("./Customizing/global/plugins/Services/COPage/PageComponent/QuickSignUp/templates/custom.css");
 
 	}
 
@@ -101,6 +134,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			return "";
 		}
 
+		//todo add html container to allow us to adapt the CSS.
 		$modal = $this->ui_factory->modal()->roundtrip("Modal Title", $this->ui_factory->legacy(""));
 		$this->ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
 
@@ -130,16 +164,20 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		{
 			//todo: use custom CSS following the FW entry.
 			if($this->tab_option == self::MD_LOGIN_VIEW) {
-				$button1 = $this->ui_factory->button()->standard('Login', '#')->withUnavailableAction();
-				$button2 = $this->ui_factory->button()->standard('Registration', '#')
+				$button1 = $this->ui_factory->button()->shy('Login', '#')->withUnavailableAction();
+				$button2 = $this->ui_factory->button()->shy('Registration', '#')
 					->withOnClick($replaceSignal->withAsyncRenderUrl($register_url));
 			} else {
-				$button1 = $this->ui_factory->button()->standard('Login', '#')
+				$button1 = $this->ui_factory->button()->shy('Login', '#')
 					->withOnClick($replaceSignal->withAsyncRenderUrl($login_url));
-				$button2 = $this->ui_factory->button()->standard('Registration', '#')->withUnavailableAction();
+				$button2 = $this->ui_factory->button()->shy('Registration', '#')->withUnavailableAction();
 			}
 
-			return array($button1, $button2);
+			$html_nav = "<div id='il_qsu_plugin_navigation' class='row'><div class='col-sm-6'>".
+				$this->ui_renderer->render($button1)."</div><div class='col-sm-6'>".
+				$this->ui_renderer->render($button2)."</div>".
+				"</div>";
+			return $this->ui_renderer->render($this->ui_factory->legacy($html_nav));
 		}
 
 		return array($this->ui_factory->legacy(""));
@@ -159,6 +197,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$current_status = $status->getStatus();
 
+		$legacy_content = "";
 		switch ($current_status)
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATED:
@@ -173,7 +212,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
 				//todo remove inline css and use the ilias sendFailure css
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
-				$legacy_content = $this->ui_renderer->render($this->getNavigation());
+				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div style='" . $css . "'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
 				$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
 				$legacy_content .= " ".$this->getPasswordAssistance();
@@ -192,10 +231,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$legacy_content .= $this->appendLoginJS($this->getLoginValidationUrl());
 		}
 
-		$legacy = $this->ui_factory->legacy($legacy_content);
+		//$legacy = $this->ui_factory->legacy($legacy_content);
 
-		//todo: perform redirect when close button and the user is authenticated successfully
-		$modal = $this->ui_factory->modal()->roundtrip("Login", array_merge($this->getNavigation(), array($legacy)))->withCancelButtonLabel($this->lng->txt('close'));
+
+		$modal_content = $this->getNavigation();
+		$modal_content .= $legacy_content;
+		$embed_content = $this->embedTheContent($modal_content);
+
+		$modal = $this->ui_factory->modal()->roundtrip("Login", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'));
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
 	}
@@ -211,10 +254,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$legacy_content = $this->initFormRegister()->getHTML();
 
-		$legacy = $this->ui_factory->legacy($legacy_content);
+		$modal_content = $this->getNavigation();
+		$modal_content .= $legacy_content;
+		$modal_content .= $this->getTermsOfService();
+		$embed_content = $this->embedTheContent($modal_content);
 
 		//todo lang var
-		$modal = $this->ui_factory->modal()->roundtrip("Registration", array_merge($this->getNavigation(), array($legacy)));
+		$modal = $this->ui_factory->modal()->roundtrip("Registration", $this->ui_factory->legacy($embed_content));
 
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
@@ -476,23 +522,21 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	}
 
 	/**
-	 * TODO remove this: If we have the tabs we don't need this method nor getAlreadyUsingIlias
-	 * @return string with link to the register
+	 * @return string HTML with the text + link to Terms and Conditions
 	 */
-	public function getNewToIlias()
+	public function getTermsOfService()
 	{
-		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
+		//todo: Ask for this
+		if(ilTermsOfServiceHelper::isEnabled())
 		{
-			return $this->lng->txt("registration").$this->ctrl->getLinkTargetByClass("ilaccountregistrationgui", "");
+			//todo lang var
+			$btn = $this->ui_factory->button()->shy($this->lng->txt("terms_and_conditions"), $this->ctrl->getLinkTarget($this, "jumpToTermsOfService"));
+			$terms_text = "By creating an account, you agree to our ";
+			$terms_text .= $this->ui_renderer->render($btn);
+
+			return $terms_text;
 		}
 	}
-
-	public function getAlreadyUsingIlias()
-	{
-		//TODO nothing.
-	}
-
-
 	/**
 	 * TODO fix the ctrl call
 	 * @return string with the password assistance links
@@ -537,6 +581,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//$this->ctrl->setCmdClass("ilpasswordassistancegui");
 		//$this->ctrl->setCmd("showUsernameAssistanceForm");
 		//$this->executeCommand();
+	}
+
+	public function jumpToTermsOfService()
+	{
+		//TODO
 	}
 
 	/**
@@ -586,9 +635,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					data: $(this).serialize(),
 					dataType: 'json',
 					success: function(result) {
-						$('.modal-body').html(result['html']);
 						if(result['status'] === 'ok') {
-						    setTimeout(function(){ location.reload() }, 1000);
+						    /*setTimeout(function(){ location.reload() }, 1000);*/
+						    location.reload();
+						} else {
+						    $('#quick_sign_up_modal_content').html(result['html']);
 						}
 					 },
 					error: function(result) {
@@ -612,149 +663,33 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	public function initFormRegister()
 	{
-		$registration_settings = new ilRegistrationSettings();
-
-		$code_enabled = ($registration_settings->registrationCodeRequired() ||
-			$registration_settings->getAllowCodes());
-
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
-
 		$form->setFormAction($this->ctrl->getFormAction($this));
+		$form->setName("formregister");
+		$form->setId("register_modal_plugin");
 		$form->setShowTopButtons(false);
 
-		// user defined fields
-		$user_defined_data = $this->user->getUserDefinedData();
+		$ti = new ilTextInputGUI($this->lng->txt("username"), "username");
+		$ti->setSize(20);
+		$ti->setRequired(true);
+		$ti->setMaxLength(30);
+		$form->addItem($ti);
 
-		include_once './Services/User/classes/class.ilUserDefinedFields.php';
-		$user_defined_fields =& ilUserDefinedFields::_getInstance();
-		$custom_fields = array();
-		foreach($user_defined_fields->getRegistrationDefinitions() as $field_id => $definition)
-		{
-			if($definition['field_type'] == UDF_TYPE_TEXT)
-			{
-				$custom_fields["udf_".$definition['field_id']] =
-					new ilTextInputGUI($definition['field_name'], "udf_".$definition['field_id']);
-				$custom_fields["udf_".$definition['field_id']]->setValue($user_defined_data["f_".$field_id]);
-				$custom_fields["udf_".$definition['field_id']]->setMaxLength(255);
-				$custom_fields["udf_".$definition['field_id']]->setSize(40);
-			}
-			else if($definition['field_type'] == UDF_TYPE_WYSIWYG)
-			{
-				$custom_fields["udf_".$definition['field_id']] =
-					new ilTextAreaInputGUI($definition['field_name'], "udf_".$definition['field_id']);
-				$custom_fields["udf_".$definition['field_id']]->setValue($user_defined_data["f_".$field_id]);
-				$custom_fields["udf_".$definition['field_id']]->setUseRte(true);
-			}
-			else
-			{
-				$custom_fields["udf_".$definition['field_id']] =
-					new ilSelectInputGUI($definition['field_name'], "udf_".$definition['field_id']);
-				$custom_fields["udf_".$definition['field_id']]->setValue($user_defined_data["f_".$field_id]);
-				$custom_fields["udf_".$definition['field_id']]->setOptions(
-					$user_defined_fields->fieldValuesToSelectArray($definition['field_values']));
-			}
-			if($definition['required'])
-			{
-				$custom_fields["udf_".$definition['field_id']]->setRequired(true);
-			}
+		$ti = new ilTextInputGUI($this->lng->txt("email"), "usr_email");
+		$ti->setSize(50);
+		$ti->setRequired(true);
+		$ti->setMaxLength(100);
+		$form->addItem($ti);
 
-			if($definition['field_type'] == UDF_TYPE_SELECT && !$user_defined_data["f_".$field_id])
-			{
-				$options = array(""=>$this->lng->txt("please_select")) + $custom_fields["udf_".$definition['field_id']]->getOptions();
-				$custom_fields["udf_".$definition['field_id']]->setOptions($options);
-			}
-		}
-
-		// standard fields
-		include_once("./Services/User/classes/class.ilUserProfile.php");
-		$up = new ilUserProfile();
-		$up->setMode(ilUserProfile::MODE_REGISTRATION);
-		$up->skipGroup("preferences");
-		$up->skipGroup("settings");
-
-//todo try to find a way to add fields instead of remove them.
-//TODO: ask if the plugin should have the same fields and configuration than the normal login in ilias configured in admin users.
-		//$up->skipGroup("interests");
-		//$up->skipGroup("personal_data");
-		//$up->skipGroup("other");
-
-		/*$fields_to_skip = array (
-			"institution",
-			"department",
-			"street",
-			"zipcode",
-			"city",
-			"country",
-			"phone_office",
-			"phone_home",
-			"phone_mobile",
-			"fax",
-			"second_email"
-		);
-		foreach($fields_to_skip as $field)
-		{
-			$up->skipField($field);
-		}*/
-
-/*
- * STILL WORKING HERE!
- */
-		$up->setAjaxCallback(
-			$this->ctrl->getLinkTarget($this, 'doProfileAutoComplete', '', true)
-		);
-
-		$this->lng->loadLanguageModule("user");
-
-		// add fields to form
-		$up->addStandardFieldsToForm($form, NULL, $custom_fields);
-		unset($custom_fields);
-
-
-		// #11407
-		$domains = array();
-		foreach($registration_settings->getAllowedDomains() as $item)
-		{
-			if(trim($item))
-			{
-				$domains[] = $item;
-			}
-		}
-		if(sizeof($domains))
-		{
-			$mail_obj = $form->getItemByPostVar('usr_email');
-			$mail_obj->setInfo(sprintf($this->lng->txt("reg_email_domains"),
-					implode(", ", $domains))."<br />".
-				($code_enabled ? $this->lng->txt("reg_email_domains_code") : ""));
-		}
-
-		// #14272
-		if($registration_settings->getRegistrationType() == IL_REG_ACTIVATION)
-		{
-			$mail_obj = $form->getItemByPostVar('usr_email');
-			if($mail_obj) // #16087
-			{
-				$mail_obj->setRequired(true);
-			}
-		}
-
-		require_once 'Services/TermsOfService/classes/class.ilTermsOfServiceSignableDocumentFactory.php';
-		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($this->lng);
-		if(ilTermsOfServiceHelper::isEnabled() && $document->exists())
-		{
-			$field = new ilFormSectionHeaderGUI();
-			$field->setTitle($this->lng->txt('usr_agreement'));
-			$form->addItem($field);
-
-			$field = new ilCustomInputGUI();
-			$field->setHTML('<div id="agreement">' . $document->getContent() . '</div>');
-			$form->addItem($field);
-
-			$field = new ilCheckboxInputGUI($this->lng->txt('accept_usr_agreement'), 'accept_terms_of_service');
-			$field->setRequired(true);
-			$field->setValue(1);
-			$form->addItem($field);
-		}
+		$pi = new ilPasswordInputGUI($this->lng->txt("password"), "usr_password");
+		$pi->setUseStripSlashes(false);
+		$pi->setRetype(true);
+		$pi->setSkipSyntaxCheck(true);
+		$pi->setSize(20);
+		$pi->setDisableHtmlAutoComplete(false);
+		$pi->setRequired(true);
+		$form->addItem($pi);
 
 		$form->addCommandButton("saveRegistration", $this->lng->txt("register"));
 
@@ -763,22 +698,68 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	protected function saveRegistration()
 	{
-		echo "perfect, validation should be done here";
+		//need this for the email domains.
+		$registration_settings = new ilRegistrationSettings();
+
+		$form = $this->getRegisterForm();
+
+		$form_valid = $form->checkInput();
+
+		// validate email against restricted domains
+		$email = $form->getInput("usr_email");
+		if($email)
+		{
+			// #10366
+			$domains = array();
+			foreach($registration_settings->getAllowedDomains() as $item)
+			{
+				if(trim($item))
+				{
+					$domains[] = $item;
+				}
+			}
+			if(sizeof($domains))
+			{
+				$mail_valid = false;
+				foreach($domains as $domain)
+				{
+					$domain = str_replace("*", "~~~", $domain);
+					$domain = preg_quote($domain);
+					$domain = str_replace("~~~", ".+", $domain);
+					if(preg_match("/^".$domain."$/", $email, $hit))
+					{
+						$mail_valid = true;
+						break;
+					}
+				}
+				if(!$mail_valid)
+				{
+					$mail_obj = $form->getItemByPostVar('usr_email');
+					$mail_obj->setAlert(sprintf($this->lng->txt("reg_email_domains"),
+						implode(", ", $domains)));
+					$form_valid = false;
+				}
+			}
+		}
+
+		$error_lng_var = '';
+		//todo: Should we take care about this auto generated pass?
+		if(
+			//!$this->registration_settings->passwordGenerationEnabled() &&
+			!ilUtil::isPasswordValidForUserContext($form->getInput('usr_password'), $form->getInput('username'), $error_lng_var)
+		)
+		{
+			$passwd_obj = $form->getItemByPostVar('usr_password');
+			$passwd_obj->setAlert($this->lng->txt($error_lng_var));
+			$form_valid = false;
+		}
+
+		echo "WORKING HERE!";
 		exit;
+	}
 
-		//$form = $this->initFormRegister();
-
-		//$form_valid = $form->
-
-		//$form_valid = false;
-
-
-/** TODO: IS THIS CONDITIONAL NEEDED???
-if($form->checkInput()) {
-  //all login here
-}
- */
-
-
+	public function embedTheContent($a_content)
+	{
+		return "<div id='quick_sign_up_modal_content'>".$a_content."</div>";
 	}
 }
