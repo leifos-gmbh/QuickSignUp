@@ -68,6 +68,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	var $ui_renderer;
 
+	var $form_login_id = "form_login_pl_qs";
+	var $form_register_id = "form_register_pl_qs";
+
 	/**
 	 * global vars initialization.
 	 */
@@ -238,6 +241,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$modal_content .= $legacy_content;
 		$embed_content = $this->embedTheContent($modal_content);
 
+		/*
+		$submit = $this->ui_factory->button()->primary('Submit', '#')
+			->withOnLoadCode(function($id) use ($form_id) {
+				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
+			});
+		*/
+
 		$modal = $this->ui_factory->modal()->roundtrip("Login", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'));
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
@@ -258,6 +268,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$modal_content .= $legacy_content;
 		$modal_content .= $this->getTermsOfService();
 		$embed_content = $this->embedTheContent($modal_content);
+
+		// Build a submit button (action button) for the modal footer
+
+		/*$form_id = $this->form_register_id;
+		$submit = $this->ui_factory->button()->primary('Submit', '#')
+			->withOnLoadCode(function($id) use ($form_id) {
+				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
+			});*/
 
 		//todo lang var
 		$modal = $this->ui_factory->modal()->roundtrip("Registration", $this->ui_factory->legacy($embed_content));
@@ -458,6 +476,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$form->setFormAction($this->ctrl->getFormAction($this));
 		$form->setName("formlogin");
+
+		//todo: we can use $form->setId(uniqid('form'));
 		$form->setId("login_modal_plugin");
 		$form->setShowTopButtons(false);
 
@@ -619,7 +639,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	}
 
 	/**
-	 * @param $a_url
+	 * @param $a_url string ajax url
+	 * @param $a_form_id string form id
 	 * @return string
 	 */
 	public function appendLoginJS($a_url)
@@ -696,8 +717,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return $form;
 	}
 
-	protected function saveRegistration()
+	function saveRegistration()
 	{
+		global $DIC;
+		$ilSetting = $DIC->settings();
+
 		//need this for the email domains.
 		$registration_settings = new ilRegistrationSettings();
 
@@ -737,6 +761,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					$mail_obj = $form->getItemByPostVar('usr_email');
 					$mail_obj->setAlert(sprintf($this->lng->txt("reg_email_domains"),
 						implode(", ", $domains)));
+					ilLoggerFactory::getRootLogger()->debug("MAIL NOT VALIDATED");
 					$form_valid = false;
 				}
 			}
@@ -749,13 +774,75 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			!ilUtil::isPasswordValidForUserContext($form->getInput('usr_password'), $form->getInput('username'), $error_lng_var)
 		)
 		{
+			ilLoggerFactory::getRootLogger()->debug("PASSWORD not valid for this User Context");
 			$passwd_obj = $form->getItemByPostVar('usr_password');
 			$passwd_obj->setAlert($this->lng->txt($error_lng_var));
 			$form_valid = false;
 		}
 
-		echo "WORKING HERE!";
-		exit;
+		//role
+		include_once 'Services/Registration/classes/class.ilRegistrationEmailRoleAssignments.php';
+		$registration_role_assignments = new ilRegistrationRoleAssignments();
+
+
+/* WORKING HERE no valid role*/
+/*
+		ilLoggerFactory::getRootLogger()->debug("Email to get the role => ".$form->getInput("usr_email"));
+		$valid_role = (int)$registration_role_assignments->getRoleByEmail($form->getInput("usr_email"));
+
+		// no valid role could be determined
+		if (!$valid_role)
+		{
+			ilLoggerFactory::getRootLogger()->debug("No valid role");
+			ilUtil::sendInfo($this->lng->txt("registration_no_valid_role"));
+			$form_valid = false;
+		}
+*/
+		// validate username
+		$login_obj = $form->getItemByPostVar('username');
+		$login = $form->getInput("username");
+		if (!ilUtil::isLogin($login))
+		{
+			ilLoggerFactory::getRootLogger()->debug("IS NOT LOGIN login =>".$login);
+			$login_obj->setAlert($this->lng->txt("login_invalid"));
+			$form_valid = false;
+		}
+		else if (ilObjUser::_loginExists($login))
+		{
+			ilLoggerFactory::getRootLogger()->debug("LOGIN EXISTS");
+			$login_obj->setAlert($this->lng->txt("login_exists"));
+			$form_valid = false;
+		}
+		else if ((int)$ilSetting->get('allow_change_loginname') &&
+			(int)$ilSetting->get('reuse_of_loginnames') == 0 &&
+			ilObjUser::_doesLoginnameExistInHistory($login))
+		{
+			ilLoggerFactory::getRootLogger()->debug("LOGIN EXISTS 2");
+			$login_obj->setAlert($this->lng->txt('login_exists'));
+			$form_valid = false;
+		}
+
+		//resolution
+		if(!$form_valid) {
+			//working here
+			ilLoggerFactory::getRootLogger()->debug("FORM NO VALID");
+			//return input not valid
+			$this->register();
+			//echo $this->lng->txt('form_input_not_valid');
+			exit;
+		} else {
+			ilLoggerFactory::getRootLogger()->debug("FORM VALID");
+
+			$user_created = $this->createUser($valid_role);
+			//todo get the current language for this.
+			//$this->distributeMails($user_created, $form->getInput("usr_language"));
+			$this->distributeMails($user_created, "en");
+
+			//TODO login + redirect to complete your profile?
+			//$this->login($user_created);
+			echo "registered";
+			exit;
+		}
 	}
 
 	public function embedTheContent($a_content)
