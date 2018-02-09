@@ -3,8 +3,6 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
 
 /**
  * Quick login/register modalbox user interface
- *
- *
  * DEV NOTES
  * 1. There is no description of which button type should be used. I'm using the standard without customization.
  * 2. viewcontrol "mode" was my first thinking.
@@ -15,12 +13,16 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * In the registration form we are not showing the available domains if limited. But we are
  * taking care about it when validate the form.
  *
+ *TODO: Rename the new html containers following a name patter.
  *TODO: try to move all the HTML to templates
  *TODO: If fields empty we are getting the something is wrong message.
  *TODO: (save user registration)Should we take care about this auto generated pass?
- *TODO: ask by terms of service. I just want to show a short text saying something like:
- *    By creating an account, you agree to our Terms and Conditions and Privacy Statement.
- *
+ * NOTICE: Using this submit buton in the modal actions whe are losing the "Key Enter"submit.
+ * Possible implementation for this:
+ *     if (e.which == 13) {
+ *		$('form#login').submit();
+ *		return false;
+ *		}
  *
  * @author Jesús López <lopez@leifos.com>
  * @version $Id$
@@ -68,13 +70,16 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	var $ui_renderer;
 
+	//we probably can create a PHP unique id
 	var $form_login_id = "form_login_pl_qs";
 	var $form_register_id = "form_register_pl_qs";
+
+	//var $modal_id = "";
 
 	/**
 	 * global vars initialization.
 	 */
-	function globalsInit()
+	function initialization()
 	{
 		global $DIC, $tpl;
 
@@ -87,15 +92,18 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$this->globals_init = true;
 
-		//ok not nice this line here
 		$this->tpl->addCss("./Customizing/global/plugins/Services/COPage/PageComponent/QuickSignUp/templates/custom.css");
 
 	}
 
+	/**
+	 * TODO: Lang vars.
+	 * @return mixed
+	 */
 	function executeCommand()
 	{
 		if(!$this->globals_init) {
-			$this->globalsInit();
+			$this->initialization();
 		}
 		$next_class = $this->ctrl->getNextClass();
 
@@ -105,7 +113,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				require_once("Services/Init/classes/class.ilPasswordAssistanceGUI.php");
 				return $this->ctrl->forwardCommand(new ilPasswordAssistanceGUI());
 
-			//todo add register commands in the array.
 			default:
 				// perform valid commands
 				$cmd = $this->ctrl->getCmd();
@@ -113,7 +120,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				{
 					$this->$cmd();
 				}
-				//todo remove this else
 				else {
 					die("WOOOOOOUUUPS! no method found");
 				}
@@ -124,22 +130,25 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	/**
 	 * Get HTML for element
 	 *
+	 * TODO: Lang vars.
+	 *
 	 * @param string $a_mode (edit, presentation, preview, offline)s
 	 * @return string $html
 	 */
 	function getElementHTML($a_mode, array $a_properties, $a_plugin_version)
 	{
 		if(!$this->globals_init) {
-			$this->globalsInit();
+			$this->initialization();
 		}
 		//If the user is not anonymous exit.
 		if(!$this->user->isAnonymous()) {
 			return "";
 		}
 
-		//todo add html container to allow us to adapt the CSS.
 		$modal = $this->ui_factory->modal()->roundtrip("Modal Title", $this->ui_factory->legacy(""));
 		$this->ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
+
+		//$this->modal_id = $modal->getReplaceContentSignal()->getId();
 
 		$modal = $modal->withAsyncRenderUrl($this->getLoginUrl());
 		$button = $this->ui_factory->button()->standard("Sign In", '#')
@@ -151,6 +160,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	/**
 	 * Show navigation
+	 *
+	 * Todo: lang vars.
 	 *
 	 * @param
 	 * @return
@@ -191,8 +202,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function login()
 	{
-		$this->ctrl->saveParameter($this, "replaceSignal");
+		//$this->modal_id = $_GET['replaceSignal'];
+		//$this->ctrl->saveParameter($this, 'replaceSignal');
+		$this->ctrl->setParameter($this, "replaceSignal", $_GET['replaceSignal']);
 
+//todo remove this
+foreach($this->ctrl->getParameterArray($this) as $x )
+{
+	ilLoggerFactory::getRootLogger()->debug(" PARAM x =".$x);
+}
 		$this->setTabOption(self::MD_LOGIN_VIEW);
 
 		include_once './Services/Authentication/classes/class.ilAuthStatus.php';
@@ -217,7 +235,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
 				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div style='" . $css . "'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
-				$legacy_content .= $this->appendLoginJS($this->getLoginUrl());
+				$legacy_content .= $this->appendJS($this->getLoginUrl(), "form_login_modal_plugin");
 				$legacy_content .= " ".$this->getPasswordAssistance();
 				$auth_result = array(
 					"status" => "ko",
@@ -231,38 +249,45 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		{
 			$legacy_content = $this->getLoginForm()->getHTML();
 			$legacy_content .= " ".$this->getPasswordAssistance();
-			$legacy_content .= $this->appendLoginJS($this->getLoginValidationUrl());
+			$legacy_content .= $this->appendJS($this->getLoginValidationUrl(), "form_login_modal_plugin");
 		}
-
-		//$legacy = $this->ui_factory->legacy($legacy_content);
-
 
 		$modal_content = $this->getNavigation();
 		$modal_content .= $legacy_content;
 		$embed_content = $this->embedTheContent($modal_content);
 
-		/*
+		// Build a submit button (action button) for the modal footer
+		$form_id = "form_login_modal_plugin";
 		$submit = $this->ui_factory->button()->primary('Submit', '#')
 			->withOnLoadCode(function($id) use ($form_id) {
 				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
 			});
-		*/
 
-		$modal = $this->ui_factory->modal()->roundtrip("Login", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'));
+		$modal = $this->ui_factory->modal()->roundtrip("Login", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'))->withActionButtons([$submit]);
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
 	}
 
 	/**
 	 * Get register screen
+	 * //todo lang vars
 	 */
 	function register()
 	{
-		$this->ctrl->saveParameter($this, "replaceSignal");
+		//$this->modal_id = $_GET['replaceSignal'];
+
+		$this->ctrl->setParameter($this, "replaceSignal", $this->modal_id);
+
+//todo remove this
+foreach($this->ctrl->getParameterArray($this) as $x )
+{
+	ilLoggerFactory::getRootLogger()->debug(" PARAM x =".$x);
+}
 
 		$this->setTabOption(self::MD_REGISTER_VIEW);
 
 		$legacy_content = $this->initFormRegister()->getHTML();
+		$legacy_content .= $this->appendJS($this->getRegisterValidationURL(), "form_register_modal_plugin");
 
 		$modal_content = $this->getNavigation();
 		$modal_content .= $legacy_content;
@@ -270,15 +295,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$embed_content = $this->embedTheContent($modal_content);
 
 		// Build a submit button (action button) for the modal footer
-
-		/*$form_id = $this->form_register_id;
+		$form_id = "form_register_modal_plugin";
 		$submit = $this->ui_factory->button()->primary('Submit', '#')
 			->withOnLoadCode(function($id) use ($form_id) {
 				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
-			});*/
+			});
 
-		//todo lang var
-		$modal = $this->ui_factory->modal()->roundtrip("Registration", $this->ui_factory->legacy($embed_content));
+		$modal = $this->ui_factory->modal()->roundtrip("Registration", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'))->withActionButtons([$submit]);
+
+		$this->ctrl->saveParameter($this, "replaceSignal");
 
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
@@ -471,12 +496,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function initFormLogin()
 	{
+		ilLoggerFactory::getRootLogger()->debug("**** initFormLogin");
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
 
 		$form->setFormAction($this->ctrl->getFormAction($this));
-		$form->setName("formlogin");
-
 		//todo: we can use $form->setId(uniqid('form'));
 		$form->setId("login_modal_plugin");
 		$form->setShowTopButtons(false);
@@ -494,9 +518,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$pi->setDisableHtmlAutoComplete(false);
 		$pi->setRequired(true);
 		$form->addItem($pi);
-
-		//async
-		$form->addCommandButton("standardAuthentication", $this->lng->txt("log_in"));
 
 		return $form;
 	}
@@ -546,13 +567,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	public function getTermsOfService()
 	{
+		//redirect the user to the terms and conditions.
+		//http://localhost/~leifos/ILIAS/ilias.php?lang=en&client_id=test2&cmd=showTermsOfService&cmdClass=ilstartupgui&cmdNode=c6&baseClass=ilStartUpGUI
 		//todo: Ask for this
 		if(ilTermsOfServiceHelper::isEnabled())
 		{
 			//todo lang var
-			$btn = $this->ui_factory->button()->shy($this->lng->txt("terms_and_conditions"), $this->ctrl->getLinkTarget($this, "jumpToTermsOfService"));
-			$terms_text = "By creating an account, you agree to our ";
-			$terms_text .= $this->ui_renderer->render($btn);
+			$btn = $this->ui_factory->button()->shy($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "jumpToTermsOfService"));
+			$terms_text = "<p id='terms_qsu_plugin'>By creating an account, you agree to our ";
+			$terms_text .= $this->ui_renderer->render($btn)."</p>";
 
 			return $terms_text;
 		}
@@ -609,32 +632,46 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	}
 
 	/**
-	 * @return string control URL to the login modal
+	 * Ctrl link to the login form
+	 * @return string
 	 */
 	protected function getLoginUrl()
 	{
 		$pl = $this->getPlugin();
-
 		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
 			"", true);
 	}
 
 	/**
-	 * @return string control URL to the validation method.
+	 * Ctrl link to the login validation.
+	 * @return string
 	 */
 	protected function getLoginValidationUrl()
 	{
 		$pl = $this->getPlugin();
-
 		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "standardAuthentication",
 			"", true);
 	}
 
+	/**
+	 * Ctrl link to register form
+	 * @return string
+	 */
 	protected function getRegisterUrl()
 	{
 		$pl = $this->getPlugin();
-
 		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "register",
+			"", true);
+	}
+
+	/**
+	 * Ctrl link to user register validation.
+	 * @return string
+	 */
+	protected function getRegisterValidationURL()
+	{
+		$pl = $this->getPlugin();
+		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "saveRegistration",
 			"", true);
 	}
 
@@ -643,11 +680,12 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 * @param $a_form_id string form id
 	 * @return string
 	 */
-	public function appendLoginJS($a_url)
+	public function appendJS($a_url, $a_form_id)
 	{
 		//todo lang var
 		$js = "<script>
-			$('#form_login_modal_plugin').on('submit', function(e) {
+			var form_id = '".$a_form_id."';
+			$('#'+form_id).on('submit', function(e) {
 				var post_url = '".$a_url."';
 				e.preventDefault();
 				$.ajax({
@@ -711,8 +749,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$pi->setDisableHtmlAutoComplete(false);
 		$pi->setRequired(true);
 		$form->addItem($pi);
-
-		$form->addCommandButton("saveRegistration", $this->lng->txt("register"));
 
 		return $form;
 	}
@@ -847,6 +883,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	public function embedTheContent($a_content)
 	{
+		ilLoggerFactory::getRootLogger()->debug("*** embedContent");
+
 		return "<div id='quick_sign_up_modal_content'>".$a_content."</div>";
 	}
 }
