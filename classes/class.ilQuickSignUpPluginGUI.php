@@ -27,7 +27,7 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * @author Jesús López <lopez@leifos.com>
  * @version $Id$
  * @ilCtrl_isCalledBy ilQuickSignUpPluginGUI: ilPCPluggedGUI
- * @ilCtrl_Calls ilQuickSignUpPluginGUI: ilPasswordAssistanceGUI
+ * @ilCtrl_Calls ilQuickSignUpPluginGUI: ilPasswordAssistanceGUI, ilStartUpGUI
  *
  */
 class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
@@ -109,6 +109,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		switch ($next_class)
 		{
+			/*case "ilstartupgui":
+				require_once("Services/Init/classes/class.ilStartUpGUI.php");
+				return $this->ctrl->forwardCommand(new ilStartUpGUI());*/
+
 			case "ilpasswordassistancegui":
 				require_once("Services/Init/classes/class.ilPasswordAssistanceGUI.php");
 				return $this->ctrl->forwardCommand(new ilPasswordAssistanceGUI());
@@ -116,7 +120,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			default:
 				// perform valid commands
 				$cmd = $this->ctrl->getCmd();
-				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register","standardAuthentication", "jumpToPasswordAssistance", "saveRegistration")))
+				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register","standardAuthentication", "jumpToPasswordAssistance", "jumpToNameAssistance", "showTermsOfService", "saveRegistration")))
 				{
 					$this->$cmd();
 				}
@@ -206,11 +210,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//$this->ctrl->saveParameter($this, 'replaceSignal');
 		$this->ctrl->setParameter($this, "replaceSignal", $_GET['replaceSignal']);
 
-//todo remove this
-foreach($this->ctrl->getParameterArray($this) as $x )
-{
-	ilLoggerFactory::getRootLogger()->debug(" PARAM x =".$x);
-}
 		$this->setTabOption(self::MD_LOGIN_VIEW);
 
 		include_once './Services/Authentication/classes/class.ilAuthStatus.php';
@@ -277,12 +276,6 @@ foreach($this->ctrl->getParameterArray($this) as $x )
 		//$this->modal_id = $_GET['replaceSignal'];
 
 		$this->ctrl->setParameter($this, "replaceSignal", $this->modal_id);
-
-//todo remove this
-foreach($this->ctrl->getParameterArray($this) as $x )
-{
-	ilLoggerFactory::getRootLogger()->debug(" PARAM x =".$x);
-}
 
 		$this->setTabOption(self::MD_REGISTER_VIEW);
 
@@ -568,20 +561,23 @@ foreach($this->ctrl->getParameterArray($this) as $x )
 	public function getTermsOfService()
 	{
 		//redirect the user to the terms and conditions.
-		//http://localhost/~leifos/ILIAS/ilias.php?lang=en&client_id=test2&cmd=showTermsOfService&cmdClass=ilstartupgui&cmdNode=c6&baseClass=ilStartUpGUI
 		//todo: Ask for this
-		if(ilTermsOfServiceHelper::isEnabled())
+		require_once './Services/TermsOfService/classes/class.ilTermsOfServiceSignableDocumentFactory.php';
+		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($this->lng);
+
+		if(ilTermsOfServiceHelper::isEnabled() && $document->exists())
 		{
-			//todo lang var
-			$btn = $this->ui_factory->button()->shy($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "jumpToTermsOfService"));
+			//todo lang vars
+			//Button can't used because targed _blank is needed .
+			//$btn = $this->ui_factory->button()->shy($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"));
+			$link = $this->ui_factory->link()->standard($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"))->withOpenInNewViewport(true);
 			$terms_text = "<p id='terms_qsu_plugin'>By creating an account, you agree to our ";
-			$terms_text .= $this->ui_renderer->render($btn)."</p>";
+			$terms_text .= $this->ui_renderer->render($link)."</p>";
 
 			return $terms_text;
 		}
 	}
 	/**
-	 * TODO fix the ctrl call
 	 * @return string with the password assistance links
 	 */
 	public function getPasswordAssistance()
@@ -590,12 +586,10 @@ foreach($this->ctrl->getParameterArray($this) as $x )
 
 		$il_setting = $DIC->settings();
 
-		// allow password assistance? Surpress option if Authmode is not local database
 		if ($il_setting->get("password_assistance"))
 		{
-			//todo: fix this links
 			$link_pass = $this->ui_factory->button()->shy($this->lng->txt("forgot_password"), $this->ctrl->getLinkTarget($this, "jumpToPasswordAssistance"));
-			$link_name = $this->ui_factory->button()->shy($this->lng->txt("forgot_username"),$this->ctrl->getLinkTargetByClass("ilpasswordassistancegui", "showUsernameAssistanceForm"));
+			$link_name = $this->ui_factory->button()->shy($this->lng->txt("forgot_username"), $this->ctrl->getLinkTarget($this, "jumpToNameAssistance"));
 
 			return $this->ui_renderer->render($link_pass)."&nbsp;&nbsp;".$this->ui_renderer->render($link_name);
 		}
@@ -605,31 +599,26 @@ foreach($this->ctrl->getParameterArray($this) as $x )
 
 	public function jumpToPasswordAssistance()
 	{
+		$this->ctrl->redirectByClass(array("ilstartupgui", "ilpasswordassistancegui"),"");
 
-		//global $ilCtrl;
-
-		//$ilCtrl->setCmdClass(" ilpasswordassistancegui");
-		//$this->ctrl->setCmdClass("ilpasswordassistancegui");
-
-		//ilLoggerFactory::getRootLogger()->debug("next = ".$ilCtrl->getNextClass());
-		//$this->ctrl->initBaseClass("ilStartUpGUI");
-		//$this->ctrl->
-		//$this->executeCommand();
 	}
 
 	public function jumpToNameAssistance()
 	{
-		//TODO
-		//change base class and do something like this.
-		//$this->ctrl->setCmdClass("ilpasswordassistancegui");
-		//$this->ctrl->setCmd("showUsernameAssistanceForm");
-		//$this->executeCommand();
+		$this->ctrl->redirectByClass(array("ilstartupgui", "ilpasswordassistancegui"),"showUsernameAssistanceForm");
 	}
 
-	public function jumpToTermsOfService()
+	/*public function jumpToTermsOfService()
 	{
-		//TODO
-	}
+
+		$this->ctrl->initBaseClass("ilStartUpGUI");
+
+		$this->ctrl->setCmdClass("ilstartupgui");
+
+		$this->ctrl->setCmd("showTermsOfService");
+
+		$this->executeCommand();
+	}*/
 
 	/**
 	 * Ctrl link to the login form
@@ -886,5 +875,25 @@ foreach($this->ctrl->getParameterArray($this) as $x )
 		ilLoggerFactory::getRootLogger()->debug("*** embedContent");
 
 		return "<div id='quick_sign_up_modal_content'>".$a_content."</div>";
+	}
+
+	/**
+	 * TODO: Working here!
+	 * Show terms of service
+	 */
+	function showTermsOfService()
+	{
+		require_once './Services/TermsOfService/classes/class.ilTermsOfServiceSignableDocumentFactory.php';
+		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($this->lng);
+		$content = $document->getContent();
+		if($content != "")
+		{
+			$custom_tpl = new ilTemplate("./Customizing/global/plugins/Services/COPage/PageComponent/QuickSignUp/templates/default/tpl.content.html", true, true);
+			$custom_tpl->setCurrentBlock("terms");
+			$custom_tpl->setVariable("CONTENT", $content);
+			$custom_tpl->parseCurrentBlock();
+		}
+		//avoid redirect
+		exit;
 	}
 }
