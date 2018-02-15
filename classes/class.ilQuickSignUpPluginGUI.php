@@ -126,7 +126,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			default:
 				// perform valid commands
 				$cmd = $this->ctrl->getCmd();
-				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "login", "test", "register","standardAuthentication", "jumpToPasswordAssistance", "jumpToNameAssistance", "showTermsOfService", "saveRegistration")))
+				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "loginView", "test", "register","standardAuthentication", "jumpToPasswordAssistance", "jumpToNameAssistance", "showTermsOfService", "saveRegistration")))
 				{
 					$this->$cmd();
 				}
@@ -210,7 +210,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	/**
 	 * Get login screen
 	 */
-	function login()
+	function loginView()
 	{
 		//$this->modal_id = $_GET['replaceSignal'];
 		//$this->ctrl->saveParameter($this, 'replaceSignal');
@@ -525,7 +525,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function initFormLogin()
 	{
-		ilLoggerFactory::getRootLogger()->debug("**** initFormLogin");
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
 
@@ -556,39 +555,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function standardAuthentication()
 	{
-		global $DIC;
-		$auth_session = $DIC['ilAuthSession'];
-
 		$form = $this->initFormLogin();
 
 		if($form->checkInput()) {
-			include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendCredentials.php';
-			$credentials = new ilAuthFrontendCredentials();
-			$credentials->setUsername($form->getInput('username'));
-			$credentials->setPassword($form->getInput('password'));
-
-			include_once './Services/Authentication/classes/Provider/class.ilAuthProviderFactory.php';
-			$provider_factory = new ilAuthProviderFactory();
-			$providers = $provider_factory->getProviders($credentials);
-
-			include_once './Services/Authentication/classes/class.ilAuthStatus.php';
-			$status = ilAuthStatus::getInstance();
-
-			include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendFactory.php';
-			$frontend_factory = new ilAuthFrontendFactory();
-			$frontend_factory->setContext(ilAuthFrontendFactory::CONTEXT_STANDARD_FORM);
-
-			$frontend = $frontend_factory->getFrontend(
-				$auth_session,
-				$status,
-				$credentials,
-				$providers
-			);
-
-			$frontend->authenticate();
+			$this->login($form->getInput("username"), $form->getInput('password'));
 		}
 
-		$this->login();
+		$this->loginView();
 	}
 
 	/**
@@ -660,7 +633,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	protected function getLoginUrl()
 	{
 		$pl = $this->getPlugin();
-		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "login",
+		return $this->ctrl->getLinkTargetByClass(array($pl->getPageGUIClass(), "ilpcpluggedgui", "ilquicksignupplugingui"), "loginView",
 			"", true);
 	}
 
@@ -780,7 +753,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return $form;
 	}
 
-	//TODO: The mail IS NOT VALIDATED HERE.
 	//TODO: clean the duplicate code. (resolution array for instance)
 	function saveRegistration()
 	{
@@ -904,10 +876,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			{
 				//return status ok, html empty
 				$auth_result = array(
-					"status" => "ko",
-					"html" => "user can be registered, change this KO to OK"
+					"status" => "ok",
+					"html" => ""
 				);
-
 				echo json_encode($auth_result);
 				exit;
 			}
@@ -930,7 +901,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	protected function createUser($a_role, $a_user_data)
 	{
-		// something went wrong with the form validation
 		if(!$a_role)
 		{
 			global $ilias;
@@ -952,6 +922,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$user_object->saveAsNew();
 			//send mail notification
 			$this->sendRegistrationEmail($user_object);
+			//login
+			$this->login($a_user_data['username'], $a_user_data['password']);
 			return true;
 		} else {
 			return false;
@@ -1020,5 +992,41 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$mmail->Body($body);
 		$mmail->Send();
 
+	}
+
+	/**
+	 * @param $a_name string username
+	 * @param $a_pass string pass
+	 */
+	protected function login($a_name, $a_pass)
+	{
+		global $DIC;
+		$auth_session = $DIC['ilAuthSession'];
+
+		//login the user
+		include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendCredentials.php';
+		$credentials = new ilAuthFrontendCredentials();
+		$credentials->setUsername($a_name);
+		$credentials->setPassword($a_pass);
+
+		include_once './Services/Authentication/classes/Provider/class.ilAuthProviderFactory.php';
+		$provider_factory = new ilAuthProviderFactory();
+		$providers = $provider_factory->getProviders($credentials);
+
+		include_once './Services/Authentication/classes/class.ilAuthStatus.php';
+		$status = ilAuthStatus::getInstance();
+
+		include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendFactory.php';
+		$frontend_factory = new ilAuthFrontendFactory();
+		$frontend_factory->setContext(ilAuthFrontendFactory::CONTEXT_STANDARD_FORM);
+
+		$frontend = $frontend_factory->getFrontend(
+			$auth_session,
+			$status,
+			$credentials,
+			$providers
+		);
+
+		$frontend->authenticate();
 	}
 }
