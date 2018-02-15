@@ -758,7 +758,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$ti->setMaxLength(30);
 		$form->addItem($ti);
 
-		$ti = new ilTextInputGUI($this->lng->txt("email"), "usr_email");
+		$ti = new ilEMailInputGUI($this->lng->txt("email"), "usr_email");
 		$ti->setSize(50);
 		$ti->setRequired(true);
 		$ti->setMaxLength(100);
