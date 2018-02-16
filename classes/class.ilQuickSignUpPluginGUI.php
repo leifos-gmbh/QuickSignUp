@@ -45,16 +45,17 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 * @var ilCtrl
 	 */
 	var $ctrl;
+
 	/**
 	 * @var ilObjUser
 	 */
-
 	var $user;
 
 	/**
 	 * @var ilTemplate
 	 */
 	var $tpl;
+
 	/**
 	 * @var ilLanguage
 	 */
@@ -295,7 +296,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		switch($current_status)
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-				ilLoggerFactory::getRootLogger()->debug("Authentication failed");
 				//todo remove inline css and use the ilias sendFailure css
 				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
 				$legacy_content = $this->getNavigation();
@@ -680,6 +680,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//todo lang var
 		$js = "<script>
 			var form_id = '".$a_form_id."';
+			/*alert('append with form id => ' + form_id);*/
 			$('#'+form_id).on('submit', function(e) {
 				var post_url = '".$a_url."';
 				e.preventDefault();
@@ -919,13 +920,29 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$user_object->setPasswd($a_user_data["password"]);
 
 		if($user_object->create()) {
+
+			/*Mandatory configuration*/
+			$user_object->setActive(true);
+			$user_object->setTimeLimitUnlimited(true);
+			$user_object->setFirstname($a_user_data["username"]);
+			$user_object->setLastname($a_user_data["username"]);
+			//accept terms of service
+			$date_time = new ilDateTime( time(),IL_CAL_UNIX);
+			$user_object->setAgreeDate($date_time);
+
+			//store user in usr_data
 			$user_object->saveAsNew();
+
 			//send mail notification
 			$this->sendRegistrationEmail($user_object);
+
 			//login
 			$this->login($a_user_data['username'], $a_user_data['password']);
+
 			return true;
-		} else {
+		}
+		else
+		{
 			return false;
 		}
 	}

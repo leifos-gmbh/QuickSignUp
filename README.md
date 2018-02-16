@@ -17,3 +17,21 @@ No special configuration for users who have a registration code.
     ilAuthStatus::STATUS_CODE_ACTIVATION_REQUIRED:
 			
 Captcha configuration is not used.
+
+##User registration
+
+Users registered via plugin are configured as follows:
+
+- Terms of service accepted.
+- Activated automatically.
+- Time limit "Unlimited".
+- First name = User name.
+- Last name = User name.
+
+To avoid user redirection to "Complete your Profile" don't set required fields in the user administration.
+Administration -> User Management -> Settings -> Standard Fields/ Custom Fields.
+
+
+
+Users registered via plugin have time limit "Unlimited".
+
