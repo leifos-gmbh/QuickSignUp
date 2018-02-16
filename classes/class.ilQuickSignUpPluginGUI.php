@@ -187,7 +187,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//Only show the buttons if ILIAS allows to create new registrations
 		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
 		{
-			//todo: use custom CSS following the FW entry.
 			if($this->tab_option == self::MD_LOGIN_VIEW) {
 				$button1 = $this->ui_factory->button()->shy('Login', '#')->withUnavailableAction();
 				$button2 = $this->ui_factory->button()->shy('Registration', '#')
@@ -237,10 +236,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				exit;
 			*/
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-				//todo remove inline css and use the ilias sendFailure css
-				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
 				$legacy_content = $this->getNavigation();
-				$legacy_content .= "<div style='" . $css . "'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
+				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
 				$legacy_content .= $this->appendJS($this->getLoginUrl(), "form_login_modal_plugin");
 				$legacy_content .= " ".$this->getPasswordAssistance();
 				$auth_result = array(
@@ -296,10 +293,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		switch($current_status)
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-				//todo remove inline css and use the ilias sendFailure css
-				$css = "background-color:red; color:white; margin:10px 0; padding:10px;";
 				$legacy_content = $this->getNavigation();
-				$legacy_content .= "<div style='" . $css . "'>" . $status->getTranslatedReason() . "</div>" . $this->getRegisterForm()->getHTML();
+				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getRegisterForm()->getHTML();
 				$legacy_content .= $this->appendJS($this->getRegisterUrl(), "form_register_modal_plugin");
 				$legacy_content .= " ".$this->getPasswordAssistance();
 				$auth_result = array(
@@ -325,12 +320,12 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		// Build a submit button (action button) for the modal footer
 		$form_id = "form_register_modal_plugin";
 
-		$submit = $this->ui_factory->button()->primary('Register', '#')
+		$submit = $this->ui_factory->button()->primary($this->lng->txt('register'), '#')
 			->withOnLoadCode(function($id) use ($form_id) {
 				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
 			});
 
-		$modal = $this->ui_factory->modal()->roundtrip("Registration", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'))->withActionButtons([$submit]);
+		$modal = $this->ui_factory->modal()->roundtrip($this->lng->txt('registration'), $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'))->withActionButtons([$submit]);
 
 		$this->ctrl->saveParameter($this, "replaceSignal");
 
@@ -570,7 +565,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	public function getTermsOfService()
 	{
 		//redirect the user to the terms and conditions.
-		//todo: Ask for this
 		require_once './Services/TermsOfService/classes/class.ilTermsOfServiceSignableDocumentFactory.php';
 		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($this->lng);
 
@@ -677,7 +671,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	public function appendJS($a_url, $a_form_id)
 	{
-		//todo lang var
 		$js = "<script>
 			var form_id = '".$a_form_id."';
 			/*alert('append with form id => ' + form_id);*/
@@ -700,7 +693,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					error: function(result) {
 					    console.log('error->'+result.responseText);
 					    /*todo: remove the register/login button + lang var*/
-						$('.modal-body').html('Something is wrong!->'+result.responseText);
+						$('.modal-body').html('".$this->lng->txt('something_wrong')."');
 					 }
 				});
 			});
@@ -840,22 +833,17 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			(int)$this->settings->get('reuse_of_loginnames') == 0 &&
 			ilObjUser::_doesLoginnameExistInHistory($login))
 		{
-			ilLoggerFactory::getRootLogger()->debug("LOGIN EXISTS 2");
 			$login_obj->setAlert($this->lng->txt('login_exists'));
 			$form_valid = false;
 		}
-
-
-
 
 		//resolution
 		if(!$form_valid)
 		{
 			$form->setValuesByPost();
 			$html = $this->getNavigation();
-			//todo centralize the CSS for errors in the CSS file.
 			if(!$valid_role){
-				$html .= "<div id='quick_sign_up_modal_error' style='background-color:red;color:white;'>".$this->lng->txt("registration_no_valid_role")."</div>";
+				$html .= "<div id='quick_sign_up_modal_error' class='error_message'>".$this->lng->txt("registration_no_valid_role")."</div>";
 			}
 			$html .= $form->getHTML();
 			$auth_result = array(
@@ -886,8 +874,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			else
 			{
 				$html = $this->getNavigation();
-				//todo centralize the CSS for errors in the CSS file.
-				$html .= "<div id='quick_sign_up_modal_error' style='background-color:red;color:white;'>".$this->lng->txt("registration_can_not_register")."</div>";
+				$html .= "<div id='quick_sign_up_modal_error' class='error_message'>".$this->lng->txt("registration_can_not_register")."</div>";
 				$html .= $form->getHTML();
 				$auth_result = array(
 					"status" => "ko",
@@ -949,8 +936,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	public function embedTheContent($a_content)
 	{
-		ilLoggerFactory::getRootLogger()->debug("*** embedContent");
-
 		return "<div id='quick_sign_up_modal_content'>".$a_content."</div>";
 	}
 
