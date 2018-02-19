@@ -741,9 +741,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return $form;
 	}
 
-	//TODO: clean the duplicate code. (resolution array for instance)
 	function saveRegistration()
 	{
+		ilLoggerFactory::getRootLogger()->debug("");
 		//need this for the email domains.
 		$registration_settings = new ilRegistrationSettings();
 
@@ -804,7 +804,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$role_data = array_pop(ilObjRole::_lookupRegisterAllowed());
 		$valid_role = $role_data['id'];
 
-		// no valid role could be determined
+		//Admin configuration: User role assigned automatically.
+		//include_once 'Services/Registration/classes/class.ilRegistrationEmailRoleAssignments.php';
+		//$registration_role = new ilRegistrationRoleAssignments();
+		//$valid_role = (int)$registration_role->getDefaultRole();
+
+		ilLoggerFactory::getRootLogger()->debug("DEFAULT ROLE => ".$valid_role);
+
+		//no valid role could be determined
 		if (!$valid_role)
 		{
 			$form_valid = false;
@@ -900,6 +907,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$user_object->setLogin($a_user_data["username"]);
 		$user_object->setEmail($a_user_data["email"]);
 		$user_object->setPasswd($a_user_data["password"]);
+
+		//TODO: ASK MATHIAS ABOUT THE FIRST AND LAST NAME.
+		//TODO: ASK STEFAN ABOUT THE TIMELIMIT.
 
 		if($user_object->create()) {
 
