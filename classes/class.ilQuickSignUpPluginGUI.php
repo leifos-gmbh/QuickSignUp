@@ -104,7 +104,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	}
 
 	/**
-	 * TODO: Lang vars.
 	 * @return mixed
 	 */
 	function executeCommand()
@@ -132,7 +131,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					$this->$cmd();
 				}
 				else {
-					die("WOOOOOOUUUPS! no method found");
+					die($this->lng->txt("something_wrong"));
 				}
 				break;
 		}
@@ -140,8 +139,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	/**
 	 * Get HTML for element
-	 *
-	 * TODO: Lang vars.
 	 *
 	 * @param string $a_mode (edit, presentation, preview, offline)s
 	 * @return string $html
@@ -162,7 +159,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		//$this->modal_id = $modal->getReplaceContentSignal()->getId();
 
 		$modal = $modal->withAsyncRenderUrl($this->getLoginUrl());
-		$button = $this->ui_factory->button()->standard("Sign In", '#')
+		$button = $this->ui_factory->button()->standard($this->getPlugin()->txt("sign_in"), '#')
 			->withOnClick($modal->getShowSignal());
 		$content = $this->ui_renderer->render([$modal, $button]);
 
@@ -171,9 +168,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	/**
 	 * Show navigation
-	 *
-	 * Todo: lang vars.
-	 *
 	 * @param
 	 * @return
 	 */
@@ -188,13 +182,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
 		{
 			if($this->tab_option == self::MD_LOGIN_VIEW) {
-				$button1 = $this->ui_factory->button()->shy('Login', '#')->withUnavailableAction();
-				$button2 = $this->ui_factory->button()->shy('Registration', '#')
+				$button1 = $this->ui_factory->button()->shy($this->lng->txt("login"), '#')->withUnavailableAction();
+				$button2 = $this->ui_factory->button()->shy($this->getPlugin()->txt("registration"), '#')
 					->withOnClick($replaceSignal->withAsyncRenderUrl($register_url));
 			} else {
-				$button1 = $this->ui_factory->button()->shy('Login', '#')
+				$button1 = $this->ui_factory->button()->shy($this->lng->txt("login"), '#')
 					->withOnClick($replaceSignal->withAsyncRenderUrl($login_url));
-				$button2 = $this->ui_factory->button()->shy('Registration', '#')->withUnavailableAction();
+				$button2 = $this->ui_factory->button()->shy($this->getPlugin()->txt("registration"), '#')->withUnavailableAction();
 			}
 
 			$html_nav = "<div id='il_qsu_plugin_navigation' class='row'><div class='col-sm-6'>".
@@ -261,7 +255,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		// Build a submit button (action button) for the modal footer
 		$form_id = "form_login_modal_plugin";
-		$submit = $this->ui_factory->button()->primary('Submit', '#')
+		$submit = $this->ui_factory->button()->primary($this->lng->txt("submit"), '#')
 			->withOnLoadCode(function($id) use ($form_id) {
 				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
 			});
@@ -574,8 +568,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			//Button can't used because targed _blank is needed .
 			//$btn = $this->ui_factory->button()->shy($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"));
 			$link = $this->ui_factory->link()->standard($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"))->withOpenInNewViewport(true);
-			$terms_text = "<p id='terms_qsu_plugin'>By creating an account, you agree to our ";
-			$terms_text .= $this->ui_renderer->render($link)."</p>";
+			$terms_text = "<p id='terms_qsu_plugin'>".$this->getPlugin()->txt("creating_accept_terms");
+			$terms_text .= " ".$this->ui_renderer->render($link)."</p>";
 
 			return $terms_text;
 		}
@@ -741,7 +735,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$form->addItem($pi);
 
 		//TODO remove this after fix the action button JS.
-		$form->addCommandButton('saveRegistration', $this->lng->txt('Register'));
+		$form->addCommandButton('saveRegistration', $this->lng->txt('register'));
 
 
 		return $form;
@@ -841,6 +835,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if(!$form_valid)
 		{
 			$form->setValuesByPost();
+			$this->tab_option = self::MD_REGISTER_VIEW;
 			$html = $this->getNavigation();
 			if(!$valid_role){
 				$html .= "<div id='quick_sign_up_modal_error' class='error_message'>".$this->lng->txt("registration_no_valid_role")."</div>";

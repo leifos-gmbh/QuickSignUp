@@ -40,3 +40,7 @@
     margin:10px 0;
     padding:10px;
 }
+/** override the inline width auto from ilInputEmail*/
+#usr_email{
+    width:100% !important;
+}
