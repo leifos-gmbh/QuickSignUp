@@ -686,8 +686,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					 },
 					error: function(result) {
 					    console.log('error->'+result.responseText);
-					    /*todo: remove the register/login button + lang var*/
-						$('.modal-body').html('".$this->lng->txt('something_wrong')."');
+						
 					 }
 				});
 			});
@@ -743,7 +742,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	function saveRegistration()
 	{
-		ilLoggerFactory::getRootLogger()->debug("");
 		//need this for the email domains.
 		$registration_settings = new ilRegistrationSettings();
 
@@ -868,7 +866,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				//return status ok, html empty
 				$auth_result = array(
 					"status" => "ok",
-					"html" => ""
+					"html" => "ok"
 				);
 				echo json_encode($auth_result);
 				exit;
@@ -891,6 +889,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	protected function createUser($a_role, $a_user_data)
 	{
+		global $rbacadmin;
+
 		if(!$a_role)
 		{
 			global $ilias;
@@ -924,6 +924,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 			//store user in usr_data
 			$user_object->saveAsNew();
+
+			//Assign role to user
+			$rbacadmin->assignUser((int)$a_role, $user_object->getId());
+
 
 			//send mail notification
 			$this->sendRegistrationEmail($user_object);
