@@ -230,6 +230,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
 				$legacy_content .= $this->appendJS($this->getLoginUrl(), $form_id);
 				$legacy_content .= " ".$this->getPasswordAssistance();
+
+				//embed? "html" => $this->embedTheContent($legacy_content)
 				$auth_result = array(
 					"status" => "ko",
 					"html" => $legacy_content
@@ -727,7 +729,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$form->addItem($pi);
 
 		//TODO remove this after fix the action button JS.
-		$form->addCommandButton('saveRegistration', $this->lng->txt('register'));
+		//$form->addCommandButton('saveRegistration', $this->lng->txt('register'));
 
 
 		return $form;
