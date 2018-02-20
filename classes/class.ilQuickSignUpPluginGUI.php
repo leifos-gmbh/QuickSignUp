@@ -6,17 +6,10 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * DEV NOTES
  * 1. There is no description of which button type should be used. I'm using the standard without customization.
  * 2. viewcontrol "mode" was my first thinking.
- * 3. Round-Trip rules:
- *       Round-Trip modals MUST contain at least two buttons at the bottom of the modals: a button
- *       to cancel (right) the workflow and a button to finish or reach the next step in the workflow (left).
- *     2: >
  * In the registration form we are not showing the available domains if limited. But we are
  * taking care about it when validate the form.
  *
- *TODO: Rename the new html containers following a name patter.
  *TODO: try to move all the HTML to templates
- *TODO: If fields empty we are getting the something is wrong message.
- *TODO: (save user registration)Should we take care about this auto generated pass?
  * NOTICE: Using this submit buton in the modal actions whe are losing the "Key Enter"submit.
  * Possible implementation for this:
  *     if (e.which == 13) {
@@ -77,10 +70,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	var $settings;
 
 	//we probably can create a PHP unique id
-	var $form_login_id = "form_login_pl_qs";
-	var $form_register_id = "form_register_pl_qs";
+	/**
+	 * @var string
+	 */
+	var $form_login_id = "login_modal_plugin";
 
-	//var $modal_id = "";
+	/**
+	 * @var string
+	 */
+	var $form_register_id = "register_modal_plugin";
 
 	/**
 	 * global vars initialization.
@@ -115,10 +113,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		switch ($next_class)
 		{
-			/*case "ilstartupgui":
-				require_once("Services/Init/classes/class.ilStartUpGUI.php");
-				return $this->ctrl->forwardCommand(new ilStartUpGUI());*/
-
 			case "ilpasswordassistancegui":
 				require_once("Services/Init/classes/class.ilPasswordAssistanceGUI.php");
 				return $this->ctrl->forwardCommand(new ilPasswordAssistanceGUI());
@@ -208,7 +202,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	{
 		//$this->modal_id = $_GET['replaceSignal'];
 		//$this->ctrl->saveParameter($this, 'replaceSignal');
-		$this->ctrl->setParameter($this, "replaceSignal", $_GET['replaceSignal']);
+		//$this->ctrl->setParameter($this, "replaceSignal", $_GET['replaceSignal']);
+		$this->ctrl->saveParameter($this, "replaceSignal");
 
 		$this->setTabOption(self::MD_LOGIN_VIEW);
 
@@ -231,7 +226,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
 				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
-				$legacy_content .= $this->appendJS($this->getLoginUrl(), "form_login_modal_plugin");
+				$legacy_content .= $this->appendJS($this->getLoginUrl(), "form_".$this->form_login_id);
 				$legacy_content .= " ".$this->getPasswordAssistance();
 				$auth_result = array(
 					"status" => "ko",
@@ -241,11 +236,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				exit;
 		}
 
+		$form_id = "form_".$this->form_login_id;
+
 		if($current_status !=ilAuthStatus::STATUS_AUTHENTICATED && $legacy_content == "")
 		{
 			$legacy_content = $this->getLoginForm()->getHTML();
 			$legacy_content .= " ".$this->getPasswordAssistance();
-			$legacy_content .= $this->appendJS($this->getLoginValidationUrl(), "form_login_modal_plugin");
+			$legacy_content .= $this->appendJS($this->getLoginValidationUrl(), $form_id);
 		}
 
 		$modal_content = $this->getNavigation();
@@ -253,7 +250,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$embed_content = $this->embedTheContent($modal_content);
 
 		// Build a submit button (action button) for the modal footer
-		$form_id = "form_login_modal_plugin";
 		$submit = $this->ui_factory->button()->primary($this->lng->txt("submit"), '#')
 			->withOnLoadCode(function($id) use ($form_id) {
 				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
@@ -266,14 +262,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 	/**
 	 * Get register screen
-	 * //todo lang vars
 	 */
 	function register()
 	{
 		//$this->modal_id = $_GET['replaceSignal'];
 
 		//$this->ctrl->setParameter($this, "replaceSignal", $this->modal_id);
-		$this->ctrl->setParameter($this, "replaceSignal", $_GET['replaceSignal']);
+		//$this->ctrl->setParameter($this, "replaceSignal", $_GET['replaceSignal']);
+		$this->ctrl->saveParameter($this, "replaceSignal");
 
 		$this->setTabOption(self::MD_REGISTER_VIEW);
 
@@ -288,7 +284,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
 				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getRegisterForm()->getHTML();
-				$legacy_content .= $this->appendJS($this->getRegisterUrl(), "form_register_modal_plugin");
+				$legacy_content .= $this->appendJS($this->getRegisterUrl(), "form_".$this->form_register_id);
 				$legacy_content .= " ".$this->getPasswordAssistance();
 				$auth_result = array(
 					"status" => "ko",
@@ -298,11 +294,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				exit;
 		}
 
+		$form_id = "form_".$this->form_register_id;
+
 		//get default form.
 		if($current_status !=ilAuthStatus::STATUS_AUTHENTICATED && $legacy_content == "")
 		{
 			$legacy_content = $this->getRegisterForm()->getHTML();
-			$legacy_content .= $this->appendJS($this->getRegisterValidationURL(), "form_register_modal_plugin");
+			$legacy_content .= $this->appendJS($this->getRegisterValidationURL(), $form_id);
 		}
 
 		$modal_content = $this->getNavigation();
@@ -310,8 +308,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$modal_content .= $this->getTermsOfService();
 		$embed_content = $this->embedTheContent($modal_content);
 
-		// Build a submit button (action button) for the modal footer
-		$form_id = "form_register_modal_plugin";
 
 		$submit = $this->ui_factory->button()->primary($this->lng->txt('register'), '#')
 			->withOnLoadCode(function($id) use ($form_id) {
@@ -319,8 +315,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			});
 
 		$modal = $this->ui_factory->modal()->roundtrip($this->lng->txt('registration'), $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
-
-		$this->ctrl->saveParameter($this, "replaceSignal");
 
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
@@ -518,7 +512,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$form->setFormAction($this->ctrl->getFormAction($this));
 		//todo: we can use $form->setId(uniqid('form'));
-		$form->setId("login_modal_plugin");
+		$form->setId($this->form_login_id);
 		$form->setShowTopButtons(false);
 
 		$ti = new ilTextInputGUI($this->lng->txt("username"), "username");
@@ -707,7 +701,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
 		$form->setFormAction($this->ctrl->getFormAction($this));
-		$form->setId("register_modal_plugin");
+		$form->setId($this->form_register_id);
 		$form->setShowTopButtons(false);
 
 		$ti = new ilTextInputGUI($this->lng->txt("username"), "username");
