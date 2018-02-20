@@ -837,6 +837,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				$html .= "<div id='quick_sign_up_modal_error' class='error_message'>".$this->lng->txt("registration_no_valid_role")."</div>";
 			}
 			$html .= $form->getHTML();
+			$html .= $this->appendJS($this->getRegisterValidationURL(), "form_".$this->form_register_id);
+
 			$auth_result = array(
 				"status" => "ko",
 				"html" => $html
