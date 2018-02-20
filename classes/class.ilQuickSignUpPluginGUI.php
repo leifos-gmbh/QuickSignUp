@@ -213,6 +213,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$current_status = $status->getStatus();
 
 		$legacy_content = "";
+		$form_id = "form_".$this->form_login_id;
+
 		switch ($current_status)
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATED:
@@ -226,7 +228,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
 				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
-				$legacy_content .= $this->appendJS($this->getLoginUrl(), "form_".$this->form_login_id);
+				$legacy_content .= $this->appendJS($this->getLoginUrl(), $form_id);
 				$legacy_content .= " ".$this->getPasswordAssistance();
 				$auth_result = array(
 					"status" => "ko",
@@ -236,7 +238,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				exit;
 		}
 
-		$form_id = "form_".$this->form_login_id;
 
 		if($current_status !=ilAuthStatus::STATUS_AUTHENTICATED && $legacy_content == "")
 		{
@@ -278,13 +279,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$current_status = $status->getStatus();
 		$legacy_content = "";
+		$form_id = "form_".$this->form_register_id;
 
 		switch($current_status)
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
 				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getRegisterForm()->getHTML();
-				$legacy_content .= $this->appendJS($this->getRegisterUrl(), "form_".$this->form_register_id);
+				$legacy_content .= $this->appendJS($this->getRegisterUrl(), $form_id);
 				$legacy_content .= " ".$this->getPasswordAssistance();
 				$auth_result = array(
 					"status" => "ko",
@@ -294,7 +296,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				exit;
 		}
 
-		$form_id = "form_".$this->form_register_id;
 
 		//get default form.
 		if($current_status !=ilAuthStatus::STATUS_AUTHENTICATED && $legacy_content == "")
