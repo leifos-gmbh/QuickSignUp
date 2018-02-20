@@ -220,15 +220,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$legacy_content = "";
 		switch ($current_status)
 		{
-			/* //Decided not to show this message.
 			case ilAuthStatus::STATUS_AUTHENTICATED:
 				$auth_result = array(
 					"status" => "ok",
-					"html" => "welcome_back"
+					"html" => "ok"
 				);
 				echo json_encode($auth_result);
 				exit;
-			*/
+
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
 				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
@@ -685,8 +684,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 						}
 					 },
 					error: function(result) {
-					    console.log('error->'+result.responseText);
-						
+					    /*todo nothing*/
 					 }
 				});
 			});
@@ -799,15 +797,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		//role
 		//Last role from available roles for registration.(first one can be Administrator)
-		$role_data = array_pop(ilObjRole::_lookupRegisterAllowed());
-		$valid_role = $role_data['id'];
+		//$role_data = array_pop(ilObjRole::_lookupRegisterAllowed());
+		//$valid_role = $role_data['id'];
 
 		//Admin configuration: User role assigned automatically.
 		//include_once 'Services/Registration/classes/class.ilRegistrationEmailRoleAssignments.php';
-		//$registration_role = new ilRegistrationRoleAssignments();
-		//$valid_role = (int)$registration_role->getDefaultRole();
-
-		ilLoggerFactory::getRootLogger()->debug("DEFAULT ROLE => ".$valid_role);
+		$registration_role = new ilRegistrationRoleAssignments();
+		$valid_role = (int)$registration_role->getDefaultRole();
 
 		//no valid role could be determined
 		if (!$valid_role)
