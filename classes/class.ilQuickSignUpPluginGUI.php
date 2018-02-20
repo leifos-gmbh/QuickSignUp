@@ -259,7 +259,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
 			});
 
-		$modal = $this->ui_factory->modal()->roundtrip("Login", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'))->withActionButtons([$submit]);
+		$modal = $this->ui_factory->modal()->roundtrip("Login", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
 	}
@@ -318,7 +318,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
 			});
 
-		$modal = $this->ui_factory->modal()->roundtrip($this->lng->txt('registration'), $this->ui_factory->legacy($embed_content))->withCancelButtonLabel($this->lng->txt('close'))->withActionButtons([$submit]);
+		$modal = $this->ui_factory->modal()->roundtrip($this->lng->txt('registration'), $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
 
 		$this->ctrl->saveParameter($this, "replaceSignal");
 
