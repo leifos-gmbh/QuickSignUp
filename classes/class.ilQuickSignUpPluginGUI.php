@@ -950,8 +950,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function showTermsOfService()
 	{
+		global $tpl;
+
 		require_once './Services/TermsOfService/classes/class.ilTermsOfServiceSignableDocumentFactory.php';
 		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($this->lng);
+		$html = "";
 		$content = $document->getContent();
 		if($content != "")
 		{
@@ -959,10 +962,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$custom_tpl->setCurrentBlock("terms");
 			$custom_tpl->setVariable("CONTENT", $content);
 			$custom_tpl->parseCurrentBlock();
-			$custom_tpl->show();
+			//$custom_tpl->show();
+			$html = $custom_tpl->get();
 		}
+
+		$tpl->setContent($html);
+
+		//$tpl->get($custom_tpl->get());
 		//avoid redirect
-		exit;
+		//exit;
 	}
 
 	/**
