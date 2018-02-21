@@ -9,13 +9,6 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * In the registration form we are not showing the available domains if limited. But we are
  * taking care about it when validate the form.
  *
- * NOTICE: Using this submit buton in the modal actions whe are losing the "Key Enter"submit.
- * Possible implementation for this:
- *     if (e.which == 13) {
- *		$('form#login').submit();
- *		return false;
- *		}
- *
  * @author Jesús López <lopez@leifos.com>
  * @version $Id$
  * @ilCtrl_isCalledBy ilQuickSignUpPluginGUI: ilPCPluggedGUI
@@ -68,7 +61,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	var $settings;
 
-	//we probably can create a PHP unique id
 	/**
 	 * @var string
 	 */
@@ -149,8 +141,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$modal = $this->ui_factory->modal()->roundtrip("Modal Title", $this->ui_factory->legacy(""));
 		$this->ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
 
-		//$this->modal_id = $modal->getReplaceContentSignal()->getId();
-
 		$modal = $modal->withAsyncRenderUrl($this->getLoginUrl());
 		$button = $this->ui_factory->button()->standard($this->getPlugin()->txt("sign_in"), '#')
 			->withOnClick($modal->getShowSignal());
@@ -199,9 +189,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function loginView()
 	{
-		//$this->modal_id = $_GET['replaceSignal'];
-		//$this->ctrl->saveParameter($this, 'replaceSignal');
-		//$this->ctrl->setParameter($this, "replaceSignal", $_GET['replaceSignal']);
 		$this->ctrl->saveParameter($this, "replaceSignal");
 
 		$this->setTabOption(self::MD_LOGIN_VIEW);
@@ -254,10 +241,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$embed_content = $this->embedTheContent($modal_content);
 
 		// Build a submit button (action button) for the modal footer
-		$submit = $this->ui_factory->button()->primary($this->lng->txt("submit"), '#')
-			->withOnLoadCode(function($id) use ($form_id) {
-				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
-			});
+		$submit = $this->getSubmitButton($form_id, 'submit');
 
 		$modal = $this->ui_factory->modal()->roundtrip("Login", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
 		echo $this->ui_renderer->renderAsync([$modal]);
@@ -269,10 +253,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function register()
 	{
-		//$this->modal_id = $_GET['replaceSignal'];
-
-		//$this->ctrl->setParameter($this, "replaceSignal", $this->modal_id);
-		//$this->ctrl->setParameter($this, "replaceSignal", $_GET['replaceSignal']);
 		$this->ctrl->saveParameter($this, "replaceSignal");
 
 		$this->setTabOption(self::MD_REGISTER_VIEW);
@@ -312,11 +292,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$modal_content .= $this->getTermsOfService();
 		$embed_content = $this->embedTheContent($modal_content);
 
-
-		$submit = $this->ui_factory->button()->primary($this->lng->txt('register'), '#')
-			->withOnLoadCode(function($id) use ($form_id) {
-				return "$('#{$id}').click(function() { $('#{$form_id}').submit(); return false; });";
-			});
+		$submit = $this->getSubmitButton($form_id, 'register');
 
 		$modal = $this->ui_factory->modal()->roundtrip($this->lng->txt('registration'), $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
 
@@ -324,7 +300,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		exit;
 	}
 
-	//todo: if nothing special to do, delete this method and use only initFormLogin.
 	function getLoginForm()
 	{
 		$form = $this->initFormLogin();
@@ -515,7 +490,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$form = new ilPropertyFormGUI();
 
 		$form->setFormAction($this->ctrl->getFormAction($this));
-		//todo: we can use $form->setId(uniqid('form'));
 		$form->setId($this->form_login_id);
 		$form->setShowTopButtons(false);
 
@@ -561,7 +535,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		if(ilTermsOfServiceHelper::isEnabled() && $document->exists())
 		{
-			//todo lang vars
 			//Button can't used because targed _blank is needed .
 			//$btn = $this->ui_factory->button()->shy($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"));
 			$link = $this->ui_factory->link()->standard($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"))->withOpenInNewViewport(true);
@@ -588,28 +561,21 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		return "";
 	}
 
+	/**
+	 * ctrl redirect for password assistance link.
+	 */
 	public function jumpToPasswordAssistance()
 	{
 		$this->ctrl->redirectByClass(array("ilstartupgui", "ilpasswordassistancegui"),"");
-
 	}
 
+	/**
+	 * ctrl redirect for name assistance link.
+	 */
 	public function jumpToNameAssistance()
 	{
 		$this->ctrl->redirectByClass(array("ilstartupgui", "ilpasswordassistancegui"),"showUsernameAssistanceForm");
 	}
-
-	/*public function jumpToTermsOfService()
-	{
-
-		$this->ctrl->initBaseClass("ilStartUpGUI");
-
-		$this->ctrl->setCmdClass("ilstartupgui");
-
-		$this->ctrl->setCmd("showTermsOfService");
-
-		$this->executeCommand();
-	}*/
 
 	/**
 	 * Ctrl link to the login form
@@ -700,6 +666,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$this->tab_option = $a_view;
 	}
 
+	/**
+	 * Registration form.
+	 * @return ilPropertyFormGUI
+	 */
 	public function initFormRegister()
 	{
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
@@ -729,13 +699,12 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$pi->setRequired(true);
 		$form->addItem($pi);
 
-		//TODO remove this after fix the action button JS.
-		//$form->addCommandButton('saveRegistration', $this->lng->txt('register'));
-
-
 		return $form;
 	}
 
+	/**
+	 * Save the registration
+	 */
 	function saveRegistration()
 	{
 		//need this for the email domains.
@@ -883,6 +852,12 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		}
 	}
 
+	/**
+	 * Create the registered user.
+	 * @param $a_role
+	 * @param $a_user_data
+	 * @return bool
+	 */
 	protected function createUser($a_role, $a_user_data)
 	{
 		global $rbacadmin;
@@ -903,9 +878,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$user_object->setLogin($a_user_data["username"]);
 		$user_object->setEmail($a_user_data["email"]);
 		$user_object->setPasswd($a_user_data["password"]);
-
-		//TODO: ASK MATHIAS ABOUT THE FIRST AND LAST NAME.
-		//TODO: ASK STEFAN ABOUT THE TIMELIMIT.
 
 		if($user_object->create()) {
 
@@ -939,6 +911,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		}
 	}
 
+	/**
+	 * Embed the modal content in a identified div
+	 * @param $a_content
+	 * @return string
+	 */
 	public function embedTheContent($a_content)
 	{
 		return "<div id='quick_sign_up_modal_content'>".$a_content."</div>";
@@ -1045,5 +1022,22 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		);
 
 		$frontend->authenticate();
+	}
+
+	/**
+	 * Get the submit button for the login/register with the proper javascript code.
+	 * @param $a_form_id
+	 * @param $a_btn_label
+	 * @return \ILIAS\UI\Component\JavaScriptBindable
+	 */
+	function getSubmitButton($a_form_id, $a_btn_label)
+	{
+		return $this->ui_factory->button()->primary($this->lng->txt($a_btn_label), '#')
+			->withOnLoadCode(function($id) use ($a_form_id) {
+				return "
+					$('#{$id}').click(function() { $('#{$a_form_id}').submit(); return false; });
+					$(document).keypress(function(e) { if(e.which == 13) { $('#{$a_form_id}').submit(); return false;}});
+					";
+			});
 	}
 }
