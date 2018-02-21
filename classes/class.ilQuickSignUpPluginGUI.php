@@ -150,7 +150,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	}
 
 	/**
-	 * Show navigation
+	 * get navigation
 	 * @param
 	 * @return
 	 */
@@ -165,11 +165,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if (ilRegistrationSettings::_lookupRegistrationType() != IL_REG_DISABLED)
 		{
 			if($this->tab_option == self::MD_LOGIN_VIEW) {
-				$button1 = $this->ui_factory->button()->shy($this->lng->txt("login"), '#')->withUnavailableAction();
+				$button1 = $this->ui_factory->button()->shy($this->getPlugin()->txt("login"), '#')->withUnavailableAction();
 				$button2 = $this->ui_factory->button()->shy($this->getPlugin()->txt("registration"), '#')
 					->withOnClick($replaceSignal->withAsyncRenderUrl($register_url));
 			} else {
-				$button1 = $this->ui_factory->button()->shy($this->lng->txt("login"), '#')
+				$button1 = $this->ui_factory->button()->shy($this->getPlugin()->txt("login"), '#')
 					->withOnClick($replaceSignal->withAsyncRenderUrl($login_url));
 				$button2 = $this->ui_factory->button()->shy($this->getPlugin()->txt("registration"), '#')->withUnavailableAction();
 			}
@@ -243,7 +243,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		// Build a submit button (action button) for the modal footer
 		$submit = $this->getSubmitButton($form_id, 'submit');
 
-		$modal = $this->ui_factory->modal()->roundtrip("Login", $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
+		$modal = $this->ui_factory->modal()->roundtrip($this->getPlugin()->txt("login"), $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
 	}
@@ -538,8 +538,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			//Button can't used because targed _blank is needed .
 			//$btn = $this->ui_factory->button()->shy($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"));
 			$link = $this->ui_factory->link()->standard($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"))->withOpenInNewViewport(true);
-			$terms_text = "<div id='terms_qsu_plugin'>".$this->getPlugin()->txt("creating_accept_terms");
-			$terms_text .= " ".$this->ui_renderer->render($link)."</div>";
+			$terms_text = "<div id='terms_qsu_plugin'>".sprintf($this->getPlugin()->txt("creating_accept_terms"), $this->ui_renderer->render($link))."</div>";
 
 			return $terms_text;
 		}
