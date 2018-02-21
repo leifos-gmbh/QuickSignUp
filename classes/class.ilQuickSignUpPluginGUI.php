@@ -9,7 +9,6 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * In the registration form we are not showing the available domains if limited. But we are
  * taking care about it when validate the form.
  *
- *TODO: try to move all the HTML to templates
  * NOTICE: Using this submit buton in the modal actions whe are losing the "Key Enter"submit.
  * Possible implementation for this:
  *     if (e.which == 13) {
@@ -232,11 +231,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				$legacy_content .= " ".$this->getPasswordAssistance();
 
 				$legacy_content .= $this->appendJS($this->getLoginValidationUrl(), $form_id);
-				$embed_content = $this->embedTheContent($legacy_content);
+				//$embed_content = $this->embedTheContent($legacy_content);
 
 				$auth_result = array(
 					"status" => "ko",
-					"html" => $embed_content
+					"html" => $legacy_content
 				);
 				echo json_encode($auth_result);
 				exit;
@@ -566,8 +565,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			//Button can't used because targed _blank is needed .
 			//$btn = $this->ui_factory->button()->shy($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"));
 			$link = $this->ui_factory->link()->standard($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"))->withOpenInNewViewport(true);
-			$terms_text = "<p id='terms_qsu_plugin'>".$this->getPlugin()->txt("creating_accept_terms");
-			$terms_text .= " ".$this->ui_renderer->render($link)."</p>";
+			$terms_text = "<div id='terms_qsu_plugin'>".$this->getPlugin()->txt("creating_accept_terms");
+			$terms_text .= " ".$this->ui_renderer->render($link)."</div>";
 
 			return $terms_text;
 		}
@@ -946,12 +945,19 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	}
 
 	/**
-	 * TODO: Working here!
+	 * Page with only the breadcrumb to return to the original point + terms of service information.
 	 * Show terms of service
 	 */
 	function showTermsOfService()
 	{
-		global $tpl;
+		global $DIC;
+
+		$DIC->tabs()->clearTargets();
+		$DIC->tabs()->clearSubTabs();
+
+		$this->tpl->setTitleIcon("");
+		$this->tpl->setUpperIcon("");
+		$this->tpl->setTitle("Terms of Service");
 
 		require_once './Services/TermsOfService/classes/class.ilTermsOfServiceSignableDocumentFactory.php';
 		$document = ilTermsOfServiceSignableDocumentFactory::getByLanguageObject($this->lng);
@@ -963,15 +969,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$custom_tpl->setCurrentBlock("terms");
 			$custom_tpl->setVariable("CONTENT", $content);
 			$custom_tpl->parseCurrentBlock();
-			//$custom_tpl->show();
 			$html = $custom_tpl->get();
 		}
 
-		$tpl->setContent($html);
-
-		//$tpl->get($custom_tpl->get());
-		//avoid redirect
-		//exit;
+		$this->tpl->setContent($html);
 	}
 
 	/**
