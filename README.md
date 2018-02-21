@@ -1,7 +1,10 @@
-# QuickSignUp
-Plugin to add Sign in/Sign up button into pages opening one modalbox where the user can do login/register filling the form.
+# QuickSignUp Plugin
 
-Only Anonymous  
+Plugin to add "Sign in/Sign up" button into pages opening one modalbox where the user can perform login/register filling the proper form.
+
+The button mentioned is only displayed to non logged in users.
+
+## Details and Configuration
 
 Only standard users are allowed to use this method. For instance  Apache/Shibboleth ... are not allowed.
 
@@ -18,7 +21,7 @@ No special configuration for users who have a registration code.
 			
 Captcha configuration is not used.
 
-##User registration
+#### User registration
 
 Users registered via plugin are configured as follows:
 
@@ -28,10 +31,19 @@ Users registered via plugin are configured as follows:
 - First name = User name.
 - Last name = User name.
 
-To avoid user redirection to "Complete your Profile" don't set required fields in the user administration.
-Administration -> User Management -> Settings -> Standard Fields/ Custom Fields.
+To avoid user redirection to "Complete your Profile" after a new user registration, please don't set required fields in the user administration.
 
+`Administration -> User Management -> Settings -> Standard Fields/ Custom Fields.
+`
+##Installation
 
+- Inside the directory:
 
-Users registered via plugin have time limit "Unlimited".
+    `./Customizing/global/plugins/Services/COPage/PageComponent`
+    
+- Clone the plugin repository as follows:
+     
+      git clone https://github.com/leifos-gmbh/QuickSignUp.git
+
+- Install and Activate it in the ILIAS Administration - Plugins.
 
