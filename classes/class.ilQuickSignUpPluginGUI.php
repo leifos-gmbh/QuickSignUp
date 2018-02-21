@@ -227,14 +227,16 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
 				$legacy_content = $this->getNavigation();
-				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getLoginForm()->getHTML();
-				$legacy_content .= $this->appendJS($this->getLoginUrl(), $form_id);
+				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>";
+				$legacy_content .= $this->getLoginForm()->getHTML();
 				$legacy_content .= " ".$this->getPasswordAssistance();
 
-				//embed? "html" => $this->embedTheContent($legacy_content)
+				$legacy_content .= $this->appendJS($this->getLoginValidationUrl(), $form_id);
+				$embed_content = $this->embedTheContent($legacy_content);
+
 				$auth_result = array(
 					"status" => "ko",
-					"html" => $legacy_content
+					"html" => $embed_content
 				);
 				echo json_encode($auth_result);
 				exit;
