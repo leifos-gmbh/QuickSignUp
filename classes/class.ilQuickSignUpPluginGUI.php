@@ -12,7 +12,6 @@ include_once("./Services/COPage/classes/class.ilPageComponentPluginGUI.php");
  * @author Jesús López <lopez@leifos.com>
  * @version $Id$
  * @ilCtrl_isCalledBy ilQuickSignUpPluginGUI: ilPCPluggedGUI
- * @ilCtrl_Calls ilQuickSignUpPluginGUI: ilPasswordAssistanceGUI, ilStartUpGUI
  *
  */
 class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
@@ -116,7 +115,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 					$this->$cmd();
 				}
 				else {
-					die($this->lng->txt("something_wrong"));
+					die($this->getPlugin()->txt("something_wrong"));
 				}
 				break;
 		}
@@ -551,29 +550,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	{
 		if ($this->settings->get("password_assistance"))
 		{
-			$link_pass = $this->ui_factory->button()->shy($this->lng->txt("forgot_password"), $this->ctrl->getLinkTarget($this, "jumpToPasswordAssistance"));
-			$link_name = $this->ui_factory->button()->shy($this->lng->txt("forgot_username"), $this->ctrl->getLinkTarget($this, "jumpToNameAssistance"));
+			$link_pass = $this->ui_factory->button()->shy($this->lng->txt("forgot_password"), $this->ctrl->getLinkTargetByClass(array("ilstartupgui", "ilpasswordassistancegui"),""));
+			$link_name = $this->ui_factory->button()->shy($this->lng->txt("forgot_username"), $this->ctrl->getLinkTargetByClass(array("ilstartupgui", "ilpasswordassistancegui"),"showUsernameAssistanceForm"));
 
 			return $this->ui_renderer->render($link_pass)."&nbsp;&nbsp;".$this->ui_renderer->render($link_name);
 		}
 
 		return "";
-	}
-
-	/**
-	 * ctrl redirect for password assistance link.
-	 */
-	public function jumpToPasswordAssistance()
-	{
-		$this->ctrl->redirectByClass(array("ilstartupgui", "ilpasswordassistancegui"),"");
-	}
-
-	/**
-	 * ctrl redirect for name assistance link.
-	 */
-	public function jumpToNameAssistance()
-	{
-		$this->ctrl->redirectByClass(array("ilstartupgui", "ilpasswordassistancegui"),"showUsernameAssistanceForm");
 	}
 
 	/**
