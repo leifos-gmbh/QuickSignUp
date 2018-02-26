@@ -132,8 +132,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if(!$this->globals_init) {
 			$this->initialization();
 		}
+
 		//If the user is not anonymous exit.
-		if(!$this->user->isAnonymous()) {
+		if(!$this->user->isAnonymous() && $a_mode != IL_PAGE_EDIT) {
 			return "";
 		}
 
