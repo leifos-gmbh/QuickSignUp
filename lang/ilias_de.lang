@@ -6,3 +6,4 @@ sign_in#:#Anmelden
 login#:#Anmelden
 creating_accept_terms#:#Durch die Erstellung eines Accounts stimmen Sie der %s zu.
 element_not_editable#:#Dieses Element ist nicht editierbar.
+cmd_insert#:#Login Taste einfügen

@@ -6,3 +6,4 @@ sign_in#:#Sign In
 login#:#Login
 creating_accept_terms#:#By creating an account, you agree to our %s
 element_not_editable#:#This element is not editable.
+cmd_insert#:#Insert Login Button.
