@@ -360,11 +360,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if(!$this->globals_init) {
 			$this->initialization();
 		}
+		$this->tpl->setContent($this->getPlugin()->txt("element_not_editable"));
 
-		$this->setTabs("edit");
-
-		$form = $this->initForm();
-		$this->tpl->setContent($form->getHTML());
+		//$this->setTabs("edit");
+		//$form = $this->initForm();
+		//$this->tpl->setContent($form->getHTML());
 	}
 
 	/**
