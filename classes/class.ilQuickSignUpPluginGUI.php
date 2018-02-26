@@ -110,7 +110,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			default:
 				// perform valid commands
 				$cmd = $this->ctrl->getCmd();
-				if (in_array($cmd, array("create", "save", "edit", "edit2", "update", "cancel", "loginView", "test", "register","standardAuthentication", "jumpToPasswordAssistance", "jumpToNameAssistance", "showTermsOfService", "saveRegistration")))
+				if (in_array($cmd, array("create", "save", "edit", "update", "cancel", "loginView", "register","standardAuthentication", "jumpToPasswordAssistance", "jumpToNameAssistance", "showTermsOfService", "saveRegistration")))
 				{
 					$this->$cmd();
 				}
@@ -359,7 +359,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if(!$this->globals_init) {
 			$this->initialization();
 		}
-		
+
 		$this->setTabs("edit");
 
 		$form = $this->initForm();
@@ -464,6 +464,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$this->initialization();
 		}
 
+		//Because we comment this we can get rid of this edit and edit2 in the executeCommand
+		/*
 		$pl = $this->getPlugin();
 
 		$ilTabs->addTab("edit", $pl->txt("settings_1"),
@@ -471,21 +473,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$ilTabs->addTab("edit2", $pl->txt("settings_2"),
 			$this->ctrl->getLinkTarget($this, "edit2"));
+		*/
 
 		$ilTabs->activateTab($a_active);
-	}
-
-	/**
-	 * More settings editing
-	 *
-	 * @param
-	 * @return
-	 */
-	function edit2()
-	{
-		$this->setTabs("edit2");
-
-		ilUtil::sendInfo($this->getPlugin()->txt("more_editing"));
 	}
 
 	/**
@@ -542,8 +532,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		if(ilTermsOfServiceHelper::isEnabled() && $document->exists())
 		{
-			//Button can't used because targed _blank is needed .
-			//$btn = $this->ui_factory->button()->shy($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"));
 			$link = $this->ui_factory->link()->standard($this->lng->txt("usr_agreement"), $this->ctrl->getLinkTarget($this, "showTermsOfService"))->withOpenInNewViewport(true);
 			$terms_text = "<div id='terms_qsu_plugin'>".sprintf($this->getPlugin()->txt("creating_accept_terms"), $this->ui_renderer->render($link))."</div>";
 
@@ -558,8 +546,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	{
 		if ($this->settings->get("password_assistance"))
 		{
-			$link_pass = $this->ui_factory->button()->shy($this->lng->txt("forgot_password"), $this->ctrl->getLinkTargetByClass(array("ilstartupgui", "ilpasswordassistancegui"),""));
-			$link_name = $this->ui_factory->button()->shy($this->lng->txt("forgot_username"), $this->ctrl->getLinkTargetByClass(array("ilstartupgui", "ilpasswordassistancegui"),"showUsernameAssistanceForm"));
+			//new rule in the button component. Buttons are not allowed to perform navigation changes. (JF 26.2.18)
+			$link_pass = $this->ui_factory->link()->standard($this->lng->txt("forgot_password"), $this->ctrl->getLinkTargetByClass(array("ilstartupgui", "ilpasswordassistancegui")));
+			$link_name = $this->ui_factory->link()->standard($this->lng->txt("forgot_username"), $this->ctrl->getLinkTargetByClass(array("ilstartupgui", "ilpasswordassistancegui"),"showUsernameAssistanceForm"));
 
 			return $this->ui_renderer->render($link_pass)."&nbsp;&nbsp;".$this->ui_renderer->render($link_name);
 		}
