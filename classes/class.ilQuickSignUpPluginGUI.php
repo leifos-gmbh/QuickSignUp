@@ -356,6 +356,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	function edit()
 	{
+		if(!$this->globals_init) {
+			$this->initialization();
+		}
+		
 		$this->setTabs("edit");
 
 		$form = $this->initForm();
@@ -455,6 +459,10 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	function setTabs($a_active)
 	{
 		global $ilTabs;
+
+		if(!$this->globals_init) {
+			$this->initialization();
+		}
 
 		$pl = $this->getPlugin();
 
