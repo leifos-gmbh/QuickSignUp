@@ -137,14 +137,21 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if(!$this->user->isAnonymous() && $a_mode != IL_PAGE_EDIT) {
 			return " ";
 		}
+		else if($a_mode == IL_PAGE_EDIT)
+		{
+			$button = $this->ui_factory->button()->standard($this->getPlugin()->txt("sign_in"), '#');
+			$content = $this->ui_renderer->render([$button]);
+		}
+		else
+		{
+			$modal = $this->ui_factory->modal()->roundtrip("Modal Title", $this->ui_factory->legacy(""));
+			$this->ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
 
-		$modal = $this->ui_factory->modal()->roundtrip("Modal Title", $this->ui_factory->legacy(""));
-		$this->ctrl->setParameter($this, "replaceSignal", $modal->getReplaceContentSignal()->getId());
-
-		$modal = $modal->withAsyncRenderUrl($this->getLoginUrl());
-		$button = $this->ui_factory->button()->standard($this->getPlugin()->txt("sign_in"), '#')
-			->withOnClick($modal->getShowSignal());
-		$content = $this->ui_renderer->render([$modal, $button]);
+			$modal = $modal->withAsyncRenderUrl($this->getLoginUrl());
+			$button = $this->ui_factory->button()->standard($this->getPlugin()->txt("sign_in"), '#')
+				->withOnClick($modal->getShowSignal());
+			$content = $this->ui_renderer->render([$modal, $button]);
+		}
 
 		return $content;
 	}
