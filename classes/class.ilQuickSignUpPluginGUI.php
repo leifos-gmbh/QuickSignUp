@@ -219,7 +219,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				exit;
 
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>";
 				$legacy_content .= $this->getLoginForm()->getHTML();
 				$legacy_content .= " ".$this->getPasswordAssistance();
@@ -243,14 +242,13 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$legacy_content .= $this->appendJS($this->getLoginValidationUrl(), $form_id);
 		}
 
-		$modal_content = $this->getNavigation();
-		$modal_content .= $legacy_content;
-		$embed_content = $this->embedTheContent($modal_content);
+		$modal_navigation = $this->getNavigation();
+		$embed_content = $this->embedTheContent($legacy_content);
 
 		// Build a submit button (action button) for the modal footer
 		$submit = $this->getSubmitButton($form_id, 'submit');
 
-		$modal = $this->ui_factory->modal()->roundtrip($this->getPlugin()->txt("login"), $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
+		$modal = $this->ui_factory->modal()->roundtrip($this->getPlugin()->txt("login"), $this->ui_factory->legacy($modal_navigation.$embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
 	}
@@ -274,7 +272,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		switch($current_status)
 		{
 			case ilAuthStatus::STATUS_AUTHENTICATION_FAILED:
-				$legacy_content = $this->getNavigation();
 				$legacy_content .= "<div class='error_message'>" . $status->getTranslatedReason() . "</div>" . $this->getRegisterForm()->getHTML();
 				$legacy_content .= $this->appendJS($this->getRegisterUrl(), $form_id);
 				$legacy_content .= " ".$this->getPasswordAssistance();
@@ -294,14 +291,14 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$legacy_content .= $this->appendJS($this->getRegisterValidationURL(), $form_id);
 		}
 
-		$modal_content = $this->getNavigation();
-		$modal_content .= $legacy_content;
+		$modal_navigation = $this->getNavigation();
+		$modal_content = $legacy_content;
 		$modal_content .= $this->getTermsOfService();
 		$embed_content = $this->embedTheContent($modal_content);
 
 		$submit = $this->getSubmitButton($form_id, 'register');
 
-		$modal = $this->ui_factory->modal()->roundtrip($this->lng->txt('registration'), $this->ui_factory->legacy($embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
+		$modal = $this->ui_factory->modal()->roundtrip($this->lng->txt('registration'), $this->ui_factory->legacy($modal_navigation.$embed_content))->withCancelButtonLabel('close')->withActionButtons([$submit]);
 
 		echo $this->ui_renderer->renderAsync([$modal]);
 		exit;
@@ -817,7 +814,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		{
 			$form->setValuesByPost();
 			$this->tab_option = self::MD_REGISTER_VIEW;
-			$html = $this->getNavigation();
 			if(!$valid_role){
 				$html .= "<div id='quick_sign_up_modal_error' class='error_message'>".$this->lng->txt("registration_no_valid_role")."</div>";
 			}

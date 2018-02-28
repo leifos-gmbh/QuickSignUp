@@ -7,7 +7,7 @@
 }
 #quick_sign_up_modal_content {
     background-color:#F3F9FC !important;
-   padding:0 15px 15px 15px;
+   padding:15px;
 }
 #quick_sign_up_modal_content .form-horizontal {
     background-color:#F3F9FC !important;
@@ -16,7 +16,6 @@
 #il_qsu_plugin_navigation {
     background-color:white;
     text-align:center;
-    margin-bottom:20px;
 }
 #il_qsu_plugin_navigation button{
     text-decoration:none;
