@@ -685,6 +685,18 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$ti->setMaxLength(30);
 		$form->addItem($ti);
 
+		$ti = new ilTextInputGUI($this->lng->txt("firstname"), "usr_firstname");
+		$ti->setSize(20);
+		$ti->setRequired(true);
+		$ti->setMaxLength(30);
+		$form->addItem($ti);
+
+		$ti = new ilTextInputGUI($this->lng->txt("lastname"), "usr_lastname");
+		$ti->setSize(20);
+		$ti->setRequired(true);
+		$ti->setMaxLength(30);
+		$form->addItem($ti);
+
 		$ti = new ilEMailInputGUI($this->lng->txt("email"), "usr_email");
 		$ti->setSize(50);
 		$ti->setRequired(true);
@@ -824,7 +836,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$user_data = array(
 				"username" => $form->getInput("username"),
 				"email" => $form->getInput("usr_email"),
-				"password" => $form->getInput("usr_password")
+				"password" => $form->getInput("usr_password"),
+				"firstname" => $form->getInput("usr_firstname"),
+				"lastname" => $form->getInput("usr_lastname")
 			);
 			//create user
 			if($this->createUser($valid_role, $user_data))
@@ -885,8 +899,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			/*Mandatory configuration*/
 			$user_object->setActive(true);
 			$user_object->setTimeLimitUnlimited(true);
-			$user_object->setFirstname($a_user_data["username"]);
-			$user_object->setLastname($a_user_data["username"]);
+			$user_object->setFirstname($a_user_data["firstname"]);
+			$user_object->setLastname($a_user_data["lastname"]);
 			//accept terms of service
 			$date_time = new ilDateTime( time(),IL_CAL_UNIX);
 			$user_object->setAgreeDate($date_time);
