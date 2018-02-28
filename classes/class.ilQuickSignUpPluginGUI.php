@@ -135,7 +135,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		//If the user is not anonymous exit.
 		if(!$this->user->isAnonymous() && $a_mode != IL_PAGE_EDIT) {
-			return "";
+			return " ";
 		}
 
 		$modal = $this->ui_factory->modal()->roundtrip("Modal Title", $this->ui_factory->legacy(""));
@@ -335,8 +335,8 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if ($form->checkInput())
 		{
 			$properties = array(
-				"value_1" => $form->getInput("val1"),
-				"value_2" => $form->getInput("val2")
+				"value_1" => $form->getInput("val1")//,
+				//"value_2" => $form->getInput("val2")
 			);
 			if ($this->createElement($properties))
 			{
@@ -347,6 +347,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 
 		$form->setValuesByPost();
 		$this->tpl->setContent($form->getHtml());
+
 	}
 
 	/**
@@ -362,14 +363,15 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		}
 		$this->tpl->setContent($this->getPlugin()->txt("element_not_editable"));
 
-		//$this->setTabs("edit");
+		$this->setTabs("edit");
+
 		//$form = $this->initForm();
 		//$this->tpl->setContent($form->getHTML());
 	}
 
 	/**
 	 * Update
-	 *
+	 * Dummy method, this plugin is not editable so far.
 	 * @param
 	 * @return
 	 */
@@ -387,6 +389,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				ilUtil::sendSuccess($this->lng->txt("msg_obj_modified"), true);
 				$this->returnToParent();
 			}
+
 		}
 
 		$form->setValuesByPost();
@@ -401,9 +404,20 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	 */
 	public function initForm($a_create = false)
 	{
+		ilLoggerFactory::getRootLogger()->debug("METHOD INIT FORM");
+		if(!$this->globals_init) {
+			$this->initialization();
+		}
+
 		include_once("Services/Form/classes/class.ilPropertyFormGUI.php");
 		$form = new ilPropertyFormGUI();
 
+		$v1 = new ilCheckboxInputGUI($this->getPlugin()->txt("insert_login_button"), "val1");
+		$v1->setChecked(true);
+		$v1->setDisabled(true);
+		$form->addCustomProperty($this->getPlugin()->txt("insert_login_button"), "yes");
+		$form->addItem($v1);
+/*
 		// value one
 		$v1 = new ilTextInputGUI($this->getPlugin()->txt("text"), "val1");
 		$v1->setMaxLength(40);
@@ -423,7 +437,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$v1->setValue($prop["value_1"]);
 			$v2->setValue($prop["value_2"]);
 		}
-
+*/
 		// save and cancel commands
 		if ($a_create)
 		{
