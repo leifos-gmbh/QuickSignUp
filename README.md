@@ -31,7 +31,8 @@ Users registered via plugin are configured as follows:
 - First name = User name.
 - Last name = User name.
 
-To avoid user redirection to "Complete your Profile" after a new user registration, please don't set required fields in the user administration.
+To avoid user redirection to "Complete your Profile" after a new user registration, please don't set required fields in the user administration and
+check that only First name, Last name and E-Mail are set as "Required". In ILIAS 5.3 the field "Salutation" is required by default and can be changed.
 
 `Administration -> User Management -> Settings -> Standard Fields/ Custom Fields.
 `

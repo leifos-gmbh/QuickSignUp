@@ -776,7 +776,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if($registration_settings->roleSelectionEnabled())
 		{
 			//If new users can choose the role, the first one is assigned by default. //[0] 4 User [1] 5 Guest
-			$valid_role = (int)current(ilObjRole::_lookupRegisterAllowed());
+			$valid_role = (int)current(ilObjRole::_lookupRegisterAllowed())['id'];
 		}
 		else
 		{
