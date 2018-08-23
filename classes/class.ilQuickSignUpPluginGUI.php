@@ -772,15 +772,18 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$form_valid = false;
 		}
 
-		//role
-		//Last role from available roles for registration.(first one can be Administrator)
-		//$role_data = array_pop(ilObjRole::_lookupRegisterAllowed());
-		//$valid_role = $role_data['id'];
-
-		//Admin configuration: User role assigned automatically.
-		//include_once 'Services/Registration/classes/class.ilRegistrationEmailRoleAssignments.php';
-		$registration_role = new ilRegistrationRoleAssignments();
-		$valid_role = (int)$registration_role->getDefaultRole();
+		// role
+		if($registration_settings->roleSelectionEnabled())
+		{
+			//If new users can choose the role, the first one is assigned by default. //[0] 4 User [1] 5 Guest
+			$valid_role = (int)current(ilObjRole::_lookupRegisterAllowed());
+		}
+		else
+		{
+			//If the Role is assigned Automatically (administration->ILIAS auth->Automatic Role Assignment)
+			$registration_role = new ilRegistrationRoleAssignments();
+			$valid_role = (int)$registration_role->getDefaultRole();
+		}
 
 		//no valid role could be determined
 		if (!$valid_role)
