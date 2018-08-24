@@ -904,6 +904,9 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 			$date_time = new ilDateTime( time(),IL_CAL_UNIX);
 			$user_object->setAgreeDate($date_time);
 
+			//set user as self registered
+			$user_object->setIsSelfRegistered(true);
+
 			//store user in usr_data
 			$user_object->saveAsNew();
 
