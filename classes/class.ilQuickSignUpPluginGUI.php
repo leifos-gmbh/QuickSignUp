@@ -84,7 +84,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$this->ui_factory = $DIC->ui()->factory();
 		$this->ui_renderer = $DIC->ui()->renderer();
 		$this->settings = $DIC->settings();
-
 		$this->globals_init = true;
 
 		$this->tpl->addCss("./Customizing/global/plugins/Services/COPage/PageComponent/QuickSignUp/templates/custom.css");
@@ -404,11 +403,11 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	/**
 	 * Init editing form
 	 *
-	 * @param        int        $a_mode        Edit Mode
+	 * @param bool $a_create
+	 * @return ilPropertyFormGUI
 	 */
 	public function initForm($a_create = false)
 	{
-		ilLoggerFactory::getRootLogger()->debug("METHOD INIT FORM");
 		if(!$this->globals_init) {
 			$this->initialization();
 		}
@@ -421,27 +420,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$v1->setDisabled(true);
 		$form->addCustomProperty($this->getPlugin()->txt("insert_login_button"), "yes");
 		$form->addItem($v1);
-/*
-		// value one
-		$v1 = new ilTextInputGUI($this->getPlugin()->txt("text"), "val1");
-		$v1->setMaxLength(40);
-		$v1->setSize(40);
-		$v1->setRequired(true);
-		$form->addItem($v1);
 
-		// value two
-		$v2 = new ilTextInputGUI($this->getPlugin()->txt("color"), "val2");
-		$v2->setMaxLength(40);
-		$v2->setSize(40);
-		$form->addItem($v2);
-
-		if (!$a_create)
-		{
-			$prop = $this->getProperties();
-			$v1->setValue($prop["value_1"]);
-			$v2->setValue($prop["value_2"]);
-		}
-*/
 		// save and cancel commands
 		if ($a_create)
 		{
@@ -472,8 +451,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 	/**
 	 * Set tabs
 	 *
-	 * @param
-	 * @return
+	 * @param string $a_active
 	 */
 	function setTabs($a_active)
 	{
@@ -482,17 +460,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		if(!$this->globals_init) {
 			$this->initialization();
 		}
-
-		//Because we comment this we can get rid of this edit and edit2 in the executeCommand
-		/*
-		$pl = $this->getPlugin();
-
-		$ilTabs->addTab("edit", $pl->txt("settings_1"),
-			$this->ctrl->getLinkTarget($this, "edit"));
-
-		$ilTabs->addTab("edit2", $pl->txt("settings_2"),
-			$this->ctrl->getLinkTarget($this, "edit2"));
-		*/
 
 		$ilTabs->activateTab($a_active);
 	}
@@ -534,7 +501,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		$form = $this->initFormLogin();
 
 		if($form->checkInput()) {
-			$this->login($form->getInput("username"), $form->getInput('password'));
+			$this->getPlugin()->login($form->getInput("username"), $form->getInput('password'));
 		}
 
 		$this->loginView();
@@ -840,7 +807,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 				"lastname" => $form->getInput("usr_lastname")
 			);
 			//create user
-			if($this->createUser($valid_role, $user_data))
+			if($this->getPlugin()->createUser($valid_role, $user_data))
 			{
 				//return status ok, html empty
 				$auth_result = array(
@@ -866,67 +833,7 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		}
 	}
 
-	/**
-	 * Create the registered user.
-	 * @param $a_role
-	 * @param $a_user_data
-	 * @return bool
-	 */
-	protected function createUser($a_role, $a_user_data)
-	{
-		global $rbacadmin;
 
-		if(!$a_role)
-		{
-			global $ilias;
-			$ilias->raiseError("Invalid role selection in registration".
-				", IP: ".$_SERVER["REMOTE_ADDR"], $ilias->error_obj->FATAL);
-		}
-
-		$user_object = new ilObjUser();
-
-		include_once("./Services/User/classes/class.ilUserProfile.php");
-		$up = new ilUserProfile();
-		$up->setMode(ilUserProfile::MODE_REGISTRATION);
-
-		$user_object->setLogin($a_user_data["username"]);
-		$user_object->setEmail($a_user_data["email"]);
-		$user_object->setPasswd($a_user_data["password"]);
-
-		if($user_object->create()) {
-
-			/*Mandatory configuration*/
-			$user_object->setActive(true);
-			$user_object->setTimeLimitUnlimited(true);
-			$user_object->setFirstname($a_user_data["firstname"]);
-			$user_object->setLastname($a_user_data["lastname"]);
-			//accept terms of service
-			$date_time = new ilDateTime( time(),IL_CAL_UNIX);
-			$user_object->setAgreeDate($date_time);
-
-			//set user as self registered
-			$user_object->setIsSelfRegistered(true);
-
-			//store user in usr_data
-			$user_object->saveAsNew();
-
-			//Assign role to user
-			$rbacadmin->assignUser((int)$a_role, $user_object->getId());
-
-
-			//send mail notification
-			$this->sendRegistrationEmail($user_object);
-
-			//login
-			$this->login($a_user_data['username'], $a_user_data['password']);
-
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
 
 	/**
 	 * Embed the modal content in a identified div
@@ -967,78 +874,6 @@ class ilQuickSignUpPluginGUI extends ilPageComponentPluginGUI
 		}
 
 		$this->tpl->setContent($html);
-	}
-
-	/**
-	 * @param $a_user_object ilObjUser
-	 */
-	public function sendRegistrationEmail($a_user_object)
-	{
-		// try individual account mail in user administration
-		include_once("Services/Mail/classes/class.ilAccountMail.php");
-		include_once './Services/User/classes/class.ilObjUserFolder.php';
-		include_once "Services/Mail/classes/class.ilMimeMail.php";
-
-		$senderFactory = $GLOBALS["DIC"]["mail.mime.sender.factory"];
-
-		$mmail = new ilMimeMail();
-		$mmail->From($senderFactory->system());
-		$mmail->To($a_user_object->getEmail());
-
-		// mail subject
-		$subject = $this->lng->txt("reg_mail_subject");
-
-		// mail body
-		$body = $this->lng->txt("reg_mail_body_salutation")." ".$a_user_object->getLogin().",\n\n".
-			$this->lng->txt("reg_mail_body_text1")."\n\n".
-			$this->lng->txt("reg_mail_body_text2")."\n".
-			ILIAS_HTTP_PATH."/login.php?client_id=".CLIENT_ID."\n";
-		$body .= $this->lng->txt("login").": ".$a_user_object->getLogin()."\n";
-
-		$body.= "\n";
-
-		$body .= ($this->lng->txt("reg_mail_body_text3")."\n\r");
-		$body .= $a_user_object->getProfileAsString($this->lng);
-		$mmail->Subject($subject);
-		$mmail->Body($body);
-		$mmail->Send();
-
-	}
-
-	/**
-	 * @param $a_name string username
-	 * @param $a_pass string pass
-	 */
-	protected function login($a_name, $a_pass)
-	{
-		global $DIC;
-		$auth_session = $DIC['ilAuthSession'];
-
-		//login the user
-		include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendCredentials.php';
-		$credentials = new ilAuthFrontendCredentials();
-		$credentials->setUsername($a_name);
-		$credentials->setPassword($a_pass);
-
-		include_once './Services/Authentication/classes/Provider/class.ilAuthProviderFactory.php';
-		$provider_factory = new ilAuthProviderFactory();
-		$providers = $provider_factory->getProviders($credentials);
-
-		include_once './Services/Authentication/classes/class.ilAuthStatus.php';
-		$status = ilAuthStatus::getInstance();
-
-		include_once './Services/Authentication/classes/Frontend/class.ilAuthFrontendFactory.php';
-		$frontend_factory = new ilAuthFrontendFactory();
-		$frontend_factory->setContext(ilAuthFrontendFactory::CONTEXT_STANDARD_FORM);
-
-		$frontend = $frontend_factory->getFrontend(
-			$auth_session,
-			$status,
-			$credentials,
-			$providers
-		);
-
-		$frontend->authenticate();
 	}
 
 	/**
